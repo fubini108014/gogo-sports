@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install react-router-dom leaflet react-leaflet)",
+      "Bash(npm install -D @types/leaflet)",
+      "Bash(npx tsc --noEmit)"
+    ]
+  }
+}
