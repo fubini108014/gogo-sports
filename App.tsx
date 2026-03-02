@@ -9,6 +9,7 @@ import ClubListPage from './pages/ClubListPage';
 import ClubProfilePage from './pages/ClubProfilePage';
 import UserProfilePage from './pages/UserProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
+import MessagesPage from './pages/MessagesPage';
 
 const App: React.FC = () => (
   <AppProvider>
@@ -21,6 +22,7 @@ const App: React.FC = () => (
         <Route path="clubs/:id" element={<ClubProfilePage />} />
         <Route path="profile" element={<UserProfilePage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="messages" element={<MessagesPage />} />
       </Route>
     </Routes>
   </AppProvider>

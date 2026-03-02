@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Club } from '../types';
 import { SPORTS_HIERARCHY } from '../constants';
 import { ClubCardSkeleton } from './Skeleton';
-import { Search, ChevronLeft, Users, Star, Filter, ArrowUpDown, XCircle } from 'lucide-react';
+import CategorySelector from './CategorySelector';
+import { Search, ChevronLeft, Users, Star, Filter, ArrowUpDown, XCircle, Loader2 } from 'lucide-react';
 
 interface ClubListProps {
   clubs: Club[];
@@ -18,32 +19,57 @@ const ClubList: React.FC<ClubListProps> = ({ clubs, onClubClick, onBack }) => {
   const initialState = location.state || {};
 
   const [searchTerm, setSearchTerm] = useState(initialState.searchTerm || '');
-  const [selectedCategory, setSelectedCategory] = useState<string>(initialState.mainCategory || '所有運動');
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(initialState.subCategory || null);
+  const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>(
+    initialState.mainCategories || (initialState.mainCategory ? [initialState.mainCategory] : ['所有運動'])
+  );
+  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>(
+    initialState.subCategories || (initialState.subCategory ? [initialState.subCategory] : [])
+  );
   const [sortBy, setSortBy] = useState<SortOption>('MEMBERS');
 
+  // Pagination state
+  const [displayCount, setDisplayCount] = useState(6);
+  const [isMoreLoading, setIsMoreLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const observerTarget = useRef(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 700);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    setDisplayCount(6);
+  }, [searchTerm, selectedMainCategories, selectedSubCategories, sortBy]);
+
   const currentSubCategories = useMemo(() => {
-    return SPORTS_HIERARCHY.find(c => c.name === selectedCategory)?.items || [];
-  }, [selectedCategory]);
+    const subs: string[] = [];
+    selectedMainCategories.forEach(main => {
+      const cat = SPORTS_HIERARCHY.find(c => c.name === main);
+      if (cat) subs.push(...cat.items);
+    });
+    return [...new Set(subs)];
+  }, [selectedMainCategories]);
 
   const filteredAndSortedClubs = useMemo(() => {
     let result = clubs;
 
-    // 1. Filter by Category & Sub-Category
-    if (selectedCategory !== '所有運動') {
-      if (selectedSubCategory) {
-        // Precise filter: Club tags must include the specific sub-category
-        result = result.filter(club => club.tags.includes(selectedSubCategory));
+    // 1. Filter by Multi-Category
+    if (!selectedMainCategories.includes('所有運動')) {
+      if (selectedSubCategories.length > 0) {
+        result = result.filter(club => club.tags.some(tag => selectedSubCategories.includes(tag)));
       } else {
-        // Broad filter: Club tags must match ANY item in the main category
-        const category = SPORTS_HIERARCHY.find(c => c.name === selectedCategory);
-        if (category) {
-          result = result.filter(club =>
-            club.tags.some(tag =>
-              category.items.some(item => tag.includes(item) || item.includes(tag))
-            )
-          );
-        }
+        const allowedSubItems: string[] = [];
+        selectedMainCategories.forEach(main => {
+          const cat = SPORTS_HIERARCHY.find(c => c.name === main);
+          if (cat) allowedSubItems.push(...cat.items);
+        });
+        
+        result = result.filter(club =>
+          club.tags.some(tag =>
+            allowedSubItems.some(item => tag.includes(item) || item.includes(tag))
+          )
+        );
       }
     }
 
@@ -72,19 +98,70 @@ const ClubList: React.FC<ClubListProps> = ({ clubs, onClubClick, onBack }) => {
     });
 
     return result;
-  }, [clubs, searchTerm, selectedCategory, selectedSubCategory, sortBy]);
+  }, [clubs, searchTerm, selectedMainCategories, selectedSubCategories, sortBy]);
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Intersection Observer for Infinite Scroll
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 700);
-    return () => clearTimeout(t);
-  }, []);
+    if (isLoading) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && filteredAndSortedClubs.length > displayCount && !isMoreLoading) {
+          loadMore();
+        }
+      },
+      { 
+        root: null,
+        rootMargin: '200px',
+        threshold: 0.01 
+      }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+      observer.disconnect();
+    };
+  }, [filteredAndSortedClubs.length, displayCount, isMoreLoading, isLoading]);
+
+  const loadMore = () => {
+    if (isMoreLoading) return;
+    setIsMoreLoading(true);
+    setTimeout(() => {
+      setDisplayCount(prev => Math.min(prev + 6, filteredAndSortedClubs.length));
+      setIsMoreLoading(false);
+    }, 600);
+  };
 
   const handleReset = () => {
     setSearchTerm('');
-    setSelectedCategory('所有運動');
-    setSelectedSubCategory(null);
+    setSelectedMainCategories(['所有運動']);
+    setSelectedSubCategories([]);
     setSortBy('MEMBERS');
+  };
+
+  const handleMainCategoryToggle = (name: string) => {
+    if (name === '所有運動') {
+      setSelectedMainCategories(['所有運動']);
+      setSelectedSubCategories([]);
+      return;
+    }
+
+    setSelectedMainCategories(prev => {
+      const filtered = prev.filter(i => i !== '所有運動');
+      const next = filtered.includes(name) ? filtered.filter(i => i !== name) : [...filtered, name];
+      return next.length === 0 ? ['所有運動'] : next;
+    });
+  };
+
+  const handleSubCategoryToggle = (name: string) => {
+    setSelectedSubCategories(prev => 
+      prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
+    );
   };
 
   return (
@@ -127,54 +204,16 @@ const ClubList: React.FC<ClubListProps> = ({ clubs, onClubClick, onBack }) => {
 
         {/* Controls Row: Category Filter & Sort */}
         <div className="space-y-3">
-           {/* Level 1: Main Category Chips */}
-           <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4">
-             {SPORTS_HIERARCHY.map((cat) => (
-               <button
-                 key={cat.name}
-                 onClick={() => {
-                    setSelectedCategory(cat.name);
-                    setSelectedSubCategory(null);
-                 }}
-                 className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex-shrink-0 border ${
-                   selectedCategory === cat.name
-                   ? 'bg-gray-900 text-white border-gray-900 shadow-md'
-                   : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-                 }`}
-               >
-                 {cat.name}
-               </button>
-             ))}
-           </div>
-
-           {/* Level 2: Sub Category Chips */}
-           {currentSubCategories.length > 0 && (
-             <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1 animate-fade-in">
-                <button
-                   onClick={() => setSelectedSubCategory(null)}
-                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${
-                     selectedSubCategory === null
-                     ? 'bg-primary/10 text-primary border-primary/20'
-                     : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                   }`}
-                 >
-                   全部{selectedCategory}
-                 </button>
-                {currentSubCategories.map(item => (
-                  <button
-                    key={item}
-                    onClick={() => setSelectedSubCategory(item === selectedSubCategory ? null : item)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex-shrink-0 ${
-                      selectedSubCategory === item
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-             </div>
-           )}
+        {/* Unified Category Selector */}
+        <div className="px-1">
+          <CategorySelector 
+            selectedMainCategories={selectedMainCategories}
+            selectedSubCategories={selectedSubCategories}
+            onMainCategoryToggle={handleMainCategoryToggle}
+            onSubCategoryToggle={handleSubCategoryToggle}
+            variant="compact"
+          />
+        </div>
 
            {/* Sort & Count Row */}
            <div className="flex justify-between items-center px-1">
@@ -207,7 +246,7 @@ const ClubList: React.FC<ClubListProps> = ({ clubs, onClubClick, onBack }) => {
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => <ClubCardSkeleton key={i} />)
           ) : filteredAndSortedClubs.length > 0 ? (
-            filteredAndSortedClubs.map(club => (
+            filteredAndSortedClubs.slice(0, displayCount).map(club => (
               <div
                 key={club.id}
                 onClick={() => onClubClick(club.id)}
@@ -268,9 +307,11 @@ const ClubList: React.FC<ClubListProps> = ({ clubs, onClubClick, onBack }) => {
                      關鍵字：「<span className="font-bold text-gray-700 dark:text-gray-200">{searchTerm}</span>」
                    </div>
                  )}
-                 {selectedCategory !== '所有運動' && (
+                 {!selectedMainCategories.includes('所有運動') && (
                     <div className="mb-1">
-                      分類：「<span className="font-bold text-gray-700 dark:text-gray-200">{selectedSubCategory || selectedCategory}</span>」
+                      分類：「<span className="font-bold text-gray-700 dark:text-gray-200">
+                        {[...selectedMainCategories.filter(c => c !== '所有運動'), ...selectedSubCategories].join(', ')}
+                      </span>」
                     </div>
                  )}
                  <div className="mt-2">
@@ -287,6 +328,27 @@ const ClubList: React.FC<ClubListProps> = ({ clubs, onClubClick, onBack }) => {
             </div>
           )}
         </div>
+
+        {/* Infinite Scroll Sentinel */}
+        {!isLoading && filteredAndSortedClubs.length > displayCount && (
+          <div 
+            ref={observerTarget} 
+            className="flex flex-col items-center justify-center py-16 mt-4 min-h-[100px] w-full"
+          >
+            <div className="flex items-center gap-2 text-primary font-bold text-sm animate-pulse">
+              <Loader2 className="animate-spin" size={20} />
+              正在尋找更多社團...
+            </div>
+          </div>
+        )}
+
+        {/* End of results hint */}
+        {!isLoading && filteredAndSortedClubs.length > 0 && filteredAndSortedClubs.length <= displayCount && (
+          <div className="py-12 flex flex-col items-center justify-center">
+             <div className="w-1.5 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mb-4"></div>
+             <p className="text-xs text-gray-400 dark:text-gray-500 font-bold">已顯示所有社團</p>
+          </div>
+        )}
       </div>
     </div>
   );
