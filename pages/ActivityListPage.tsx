@@ -6,8 +6,8 @@ import { ActivityStatus, Level } from '../types';
 import ActivityList from '../components/ActivityList';
 import ActivityMap from '../components/ActivityMap';
 import CategorySelector from '../components/CategorySelector';
-import ActivityFilterDrawer from '../components/ActivityFilterDrawer';
-import { Search, ChevronLeft, Filter, List as ListIcon, Map as MapIcon } from 'lucide-react';
+import ActivityFilterPanel from '../components/ActivityFilterPanel';
+import { Search, ChevronLeft, Filter, List as ListIcon, Map as MapIcon, X } from 'lucide-react';
 
 const ActivityListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -50,7 +50,6 @@ const ActivityListPage: React.FC = () => {
   // Unified Filter Logic
   const filteredActivities = useMemo(() => {
     return activities.filter(a => {
-      // 1. Keyword Search
       const matchesSearch =
         a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -58,7 +57,6 @@ const ActivityListPage: React.FC = () => {
 
       if (!matchesSearch) return false;
 
-      // 2. Multi-Category Filter
       if (!selectedMainCategories.includes('所有運動')) {
         if (selectedSubCategories.length > 0) {
           if (!a.tags.some(tag => selectedSubCategories.includes(tag))) return false;
@@ -76,7 +74,6 @@ const ActivityListPage: React.FC = () => {
         }
       }
 
-      // 3. Advanced Filters
       if (!advancedFilters.cities.includes('全台灣')) {
         const matchesCity = advancedFilters.cities.some(city => a.location.includes(city));
         if (!matchesCity) return false;
@@ -140,7 +137,7 @@ const ActivityListPage: React.FC = () => {
 
   return (
     <div className="animate-fade-in px-4 pt-6 pb-20">
-       {/* Header */}
+       {/* Header - Not Sticky */}
        <div className="flex items-center gap-3 mb-4">
         <button
           onClick={() => navigate(-1)}
@@ -153,138 +150,130 @@ const ActivityListPage: React.FC = () => {
         </h1>
       </div>
 
-      {/* Global Search & Filter Controls (Common to both modes) */}
-      <div className="sticky top-0 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-sm z-20 -mx-4 px-4 pb-2">
-        <div className="flex gap-2 mb-3">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={18} className="text-gray-400 dark:text-gray-500" />
+      {/* STICKY CONTAINER - Offset by navbar height (approx 64px or 4rem) */}
+      <div className="sticky top-[60px] z-30 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md -mx-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-all duration-300">
+        <div className="relative">
+          {/* 1. Search & Advanced Filter Button */}
+          <div className="flex gap-2 mb-3">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={18} className="text-gray-400 dark:text-gray-500" />
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-gray-600 rounded-xl leading-5 bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
+                placeholder="搜尋活動..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-gray-600 rounded-xl leading-5 bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/50 transition-all shadow-sm"
-              placeholder="搜尋活動..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={`px-4 rounded-xl border transition-all flex items-center gap-2 relative ${
+                activeFilterCount > 0 || isFilterOpen
+                ? 'bg-gray-900 text-white border-gray-900 shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-400'
+              }`}
+            >
+               {isFilterOpen ? <X size={18} /> : <Filter size={18} />}
+               <span className="text-xs font-black uppercase tracking-wider hidden sm:inline">進階篩選</span>
+               {activeFilterCount > 0 && !isFilterOpen && (
+                 <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800">
+                   {activeFilterCount}
+                 </span>
+               )}
+            </button>
           </div>
-          <button
-            onClick={() => setIsFilterOpen(true)}
-            className={`p-3 rounded-xl border transition-all relative ${
-              activeFilterCount > 0
-              ? 'bg-gray-900 text-white border-gray-900 shadow-md'
-              : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-          >
-             <Filter size={20} />
-             {activeFilterCount > 0 && (
-               <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800">
-                 {activeFilterCount}
-               </span>
+
+          {/* Activity Filter Panel (Menu Style) */}
+          <ActivityFilterPanel
+            isOpen={isFilterOpen}
+            onClose={() => setIsFilterOpen(false)}
+            currentFilters={advancedFilters}
+            onApply={setAdvancedFilters}
+            onReset={handleResetFilters}
+          />
+        </div>
+
+        {/* 2. Category Selector */}
+        <div className="mb-2">
+          <CategorySelector 
+            selectedMainCategories={selectedMainCategories}
+            selectedSubCategories={selectedSubCategories}
+            onMainCategoryToggle={handleMainCategoryToggle}
+            onSubCategoryToggle={handleSubCategoryToggle}
+            variant="compact"
+          />
+        </div>
+
+        {/* 3. Result Count & View Toggle (Now inside Sticky) */}
+        <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-800/50 mt-1">
+           <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
+              <span>共找到 <span className="text-primary font-bold">{filteredActivities.length}</span> 個活動</span>
+              {activeFilterCount > 0 && (
+                <div className="h-3 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+              )}
+              {activeFilterCount > 0 && (
+                <button onClick={handleResetFilters} className="text-red-500 hover:underline">重設</button>
+              )}
+           </div>
+           
+           <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+             <button
+               onClick={() => setViewMode('list')}
+               className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+                 viewMode === 'list'
+                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+               }`}
+             >
+               <ListIcon size={12} /> 列表
+             </button>
+             <button
+               onClick={() => setViewMode('map')}
+               className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+                 viewMode === 'map'
+                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+               }`}
+             >
+               <MapIcon size={12} /> 地圖
+             </button>
+           </div>
+        </div>
+
+        {/* 4. Active Filter Chips (Small inside sticky if active) */}
+        {activeFilterCount > 0 && !isFilterOpen && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pt-1 animate-fade-in">
+             {advancedFilters.isNearlyFull && (
+               <span className="flex-shrink-0 text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded font-bold">🔥 滿額</span>
              )}
-          </button>
-        </div>
-
-        {/* Unified Category Selector */}
-        <CategorySelector 
-          selectedMainCategories={selectedMainCategories}
-          selectedSubCategories={selectedSubCategories}
-          onMainCategoryToggle={handleMainCategoryToggle}
-          onSubCategoryToggle={handleSubCategoryToggle}
-          variant="compact"
-        />
+             {!advancedFilters.cities.includes('全台灣') && (
+               <span className="flex-shrink-0 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded font-bold">{advancedFilters.cities[0]}{advancedFilters.cities.length > 1 ? `+${advancedFilters.cities.length-1}` : ''}</span>
+             )}
+             {advancedFilters.date && (
+               <span className="flex-shrink-0 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded font-bold">{advancedFilters.date}</span>
+             )}
+          </div>
+        )}
       </div>
 
-      {/* Active Filter Chips */}
-      {activeFilterCount > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4 animate-fade-in mt-4">
-           {advancedFilters.isNearlyFull && (
-             <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-md font-bold flex items-center gap-1">
-               🔥 即將額滿
-             </span>
-           )}
-           {!advancedFilters.cities.includes('全台灣') && (
-             <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md font-bold">
-               {advancedFilters.cities.join(', ')}
-             </span>
-           )}
-           {advancedFilters.date && (
-             <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md font-bold">
-               {advancedFilters.date}
-             </span>
-           )}
-           {(advancedFilters.minPrice || advancedFilters.maxPrice) && (
-             <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md font-bold">
-               ${advancedFilters.minPrice || '0'} - ${advancedFilters.maxPrice || '∞'}
-             </span>
-           )}
-           {advancedFilters.levels.map(l => (
-             <span key={l} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-md font-bold">
-               {l}
-             </span>
-           ))}
-           <button
-             onClick={handleResetFilters}
-             className="text-xs text-red-500 font-bold px-1 hover:underline"
-           >
-             重置
-           </button>
-        </div>
-      )}
-
-      {/* Result Count & View Toggle */}
-      <div className="flex items-center justify-between mb-4 mt-2">
-         <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-            共找到 {filteredActivities.length} 個活動
-         </div>
-         
-         <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
-           <button
-             onClick={() => setViewMode('list')}
-             className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
-               viewMode === 'list'
-                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-             }`}
-           >
-             <ListIcon size={12} /> 列表
-           </button>
-           <button
-             onClick={() => setViewMode('map')}
-             className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
-               viewMode === 'map'
-                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-             }`}
-           >
-             <MapIcon size={12} /> 地圖
-           </button>
-         </div>
+      {/* CONTENT AREA */}
+      <div className="mt-6">
+        {viewMode === 'list' ? (
+          <ActivityList
+            activities={filteredActivities}
+            onActivityClick={handleActivityClick}
+            searchTerm={searchTerm}
+          />
+        ) : (
+          <ActivityMap
+            activities={filteredActivities}
+            onActivityClick={handleActivityClick}
+            className="h-[calc(100vh-320px)] w-full rounded-2xl overflow-hidden shadow-inner border border-gray-100 dark:border-gray-800"
+          />
+        )}
       </div>
-
-      {/* Content View */}
-      {viewMode === 'list' ? (
-        <ActivityList
-          activities={filteredActivities}
-          onActivityClick={handleActivityClick}
-          searchTerm={searchTerm}
-        />
-      ) : (
-        <ActivityMap
-          activities={filteredActivities}
-          onActivityClick={handleActivityClick}
-          className="h-[calc(100vh-320px)] w-full rounded-2xl overflow-hidden shadow-inner border border-gray-100 dark:border-gray-800"
-        />
-      )}
-
-      {/* Advanced Filter Drawer */}
-      <ActivityFilterDrawer
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-        currentFilters={advancedFilters}
-        onApply={setAdvancedFilters}
-        onReset={handleResetFilters}
-      />
     </div>
   );
 };
