@@ -10,6 +10,7 @@ import CreateClubModal from './CreateClubModal';
 import RegistrationModal from './RegistrationModal';
 import SettingsModal from './SettingsModal';
 import ActivityFilterDrawer from './ActivityFilterDrawer';
+import SportCategoryModal from './SportCategoryModal';
 import Toast from './Toast';
 
 const Layout: React.FC = () => {
@@ -26,6 +27,7 @@ const Layout: React.FC = () => {
     isCategoryOpen, setIsCategoryOpen,
     homeLocations, homeMainCategories, homeSubCategories,
     toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
+    setHomeSubCategories,
     darkMode, setDarkMode,
     handleRegistrationConfirm,
     handleCreatePost, handleCreateActivity, handleCreateClub,
@@ -313,49 +315,28 @@ const Layout: React.FC = () => {
         </div>
       )}
 
-      {/* Home Category Modal */}
-      {isCategoryOpen && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center animate-fade-in">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsCategoryOpen(false)} />
-          <div className="relative z-10 w-full md:w-[500px] bg-white dark:bg-slate-800 rounded-t-[32px] md:rounded-3xl max-h-[85vh] md:max-h-[70vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-slide-up">
-            <div className="flex justify-center pt-3 pb-1 md:hidden flex-shrink-0">
-              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full" />
-            </div>
-            <div className="overflow-y-auto flex-1 p-6">
-              <h3 className="font-black text-sm text-slate-900 dark:text-white mb-4 hidden md:block">選擇運動類型</h3>
-              <div className="mb-4">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">主分類</h4>
-                <div className="flex flex-wrap gap-2">
-                  {SPORTS_HIERARCHY.map(cat => (
-                    <button
-                      key={cat.name}
-                      onClick={() => toggleHomeMainCategory(cat.name)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${homeMainCategories.includes(cat.name) ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900' : 'bg-transparent text-slate-500 border-slate-100 hover:border-slate-300'}`}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="pt-4 border-t border-slate-50 dark:border-slate-700">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">細項標籤</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {SPORTS_HIERARCHY.filter(c => homeMainCategories.includes(c.name)).flatMap(c => c.items).map(item => (
-                    <button
-                      key={item}
-                      onClick={() => toggleHomeSubCategory(item)}
-                      className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all ${homeSubCategories.includes(item) ? 'bg-primary/10 text-primary border-primary/20' : 'bg-transparent text-slate-400 border-transparent hover:text-slate-600'}`}
-                    >
-                      {homeSubCategories.includes(item) ? `✓ ${item}` : `#${item}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <button onClick={() => setIsCategoryOpen(false)} className="mt-6 w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-xl text-sm">完成設定</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Home Category Sidebar */}
+      <SportCategoryModal
+        isOpen={isCategoryOpen}
+        onClose={() => setIsCategoryOpen(false)}
+        initialSelected={homeSubCategories}
+        onConfirm={(selected) => {
+          setHomeSubCategories(selected);
+          
+          // Derive main categories from selected sub-categories
+          if (selected.length > 0) {
+            const derivedMain = SPORTS_HIERARCHY.filter(cat => 
+              cat.items.some(item => selected.includes(item))
+            ).map(cat => cat.name);
+            setHomeMainCategories(derivedMain.length > 0 ? derivedMain : ['所有運動']);
+          } else {
+            setHomeMainCategories(['所有運動']);
+          }
+          
+          setIsCategoryOpen(false);
+        }}
+        title="選擇運動類型"
+      />
 
       <ActivityFilterDrawer
         isOpen={isFilterOpen}

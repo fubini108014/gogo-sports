@@ -46,6 +46,8 @@ interface AppContextType {
   homeLocations: string[];
   homeMainCategories: string[];
   homeSubCategories: string[];
+  setHomeMainCategories: (cats: string[]) => void;
+  setHomeSubCategories: (cats: string[]) => void;
   toggleHomeLocation: (loc: string) => void;
   toggleHomeMainCategory: (name: string) => void;
   toggleHomeSubCategory: (name: string) => void;
@@ -235,6 +237,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isMapOpen, setIsMapOpen,
       isCategoryOpen, setIsCategoryOpen,
       homeLocations, homeMainCategories, homeSubCategories,
+      setHomeMainCategories, setHomeSubCategories,
       toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
       handleActivityClick, handleClubClick,
       handleRegistrationConfirm, handleCancelRegistration,
