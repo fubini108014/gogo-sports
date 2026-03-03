@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Bell, Plus, Home, Users, MessageSquare, Compass, LogIn } from 'lucide-react';
+import { Bell, Plus, Home, Users, MessageSquare, Compass, Check } from 'lucide-react';
+import { TAIWAN_PATH_DATA, SPORTS_HIERARCHY } from '../constants';
 import { useAppContext } from '../context/AppContext';
 import CreateMenuModal from './CreateMenuModal';
 import CreatePostModal from './CreatePostModal';
 import CreateActivityModal from './CreateActivityModal';
 import CreateClubModal from './CreateClubModal';
 import RegistrationModal from './RegistrationModal';
+import SettingsModal from './SettingsModal';
+import ActivityFilterDrawer from './ActivityFilterDrawer';
 import Toast from './Toast';
 
 const Layout: React.FC = () => {
@@ -16,6 +19,14 @@ const Layout: React.FC = () => {
     user, clubs, notifications,
     toasts,
     selectedActivity, isRegistrationOpen, setIsRegistrationOpen,
+    isSettingsOpen, setIsSettingsOpen,
+    isFilterOpen, setIsFilterOpen,
+    advancedFilters, setAdvancedFilters,
+    isMapOpen, setIsMapOpen,
+    isCategoryOpen, setIsCategoryOpen,
+    homeLocations, homeMainCategories, homeSubCategories,
+    toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
+    darkMode, setDarkMode,
     handleRegistrationConfirm,
     handleCreatePost, handleCreateActivity, handleCreateClub,
   } = useAppContext();
@@ -252,6 +263,113 @@ const Layout: React.FC = () => {
         isOpen={isCreateClubOpen}
         onClose={() => setIsCreateClubOpen(false)}
         onCreate={handleCreateClub}
+      />
+
+      {/* Home Location Modal */}
+      {isMapOpen && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center animate-fade-in">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMapOpen(false)} />
+          <div className="relative z-10 w-full md:w-[700px] bg-white dark:bg-slate-800 rounded-t-[32px] md:rounded-3xl max-h-[85vh] md:max-h-[80vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-slide-up">
+            <div className="flex justify-center pt-3 pb-1 md:hidden flex-shrink-0">
+              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full" />
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 flex justify-center">
+                  <svg viewBox="0 0 220 520" className="w-full h-full max-h-[280px] md:max-h-[380px]">
+                    {TAIWAN_PATH_DATA.map((item) => {
+                      const isSel = homeLocations.includes(item.id) || homeLocations.includes('全台灣');
+                      return (
+                        <path
+                          key={item.id}
+                          d={item.d}
+                          onClick={() => toggleHomeLocation(item.id)}
+                          className={`cursor-pointer transition-all duration-300 stroke-[1.5] ${isSel ? 'fill-primary stroke-white scale-[1.02]' : 'fill-white dark:fill-slate-700 stroke-slate-200 dark:stroke-slate-600 hover:fill-orange-50'}`}
+                          style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
+                        />
+                      );
+                    })}
+                  </svg>
+                </div>
+                <div className="flex flex-col md:h-[380px]">
+                  <h3 className="font-black text-sm text-slate-900 dark:text-white mb-3 hidden md:block">選擇地區</h3>
+                  <div className="flex-1 overflow-y-auto pr-2 no-scrollbar">
+                    <button onClick={() => toggleHomeLocation('全台灣')} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-bold mb-2 flex justify-between items-center ${homeLocations.includes('全台灣') ? 'bg-primary text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+                      全台灣 {homeLocations.includes('全台灣') && <Check size={14} />}
+                    </button>
+                    <div className="grid grid-cols-2 gap-1">
+                      {TAIWAN_PATH_DATA.map(loc => (
+                        <button key={loc.id} onClick={() => toggleHomeLocation(loc.id)} className={`px-3 py-1.5 rounded-lg text-xs font-bold text-left flex justify-between items-center ${homeLocations.includes(loc.id) ? 'bg-orange-50 dark:bg-primary/10 text-primary' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                          {loc.id} {homeLocations.includes(loc.id) && <Check size={12} />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={() => setIsMapOpen(false)} className="mt-4 w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-xl text-sm">確認選擇</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Home Category Modal */}
+      {isCategoryOpen && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center animate-fade-in">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsCategoryOpen(false)} />
+          <div className="relative z-10 w-full md:w-[500px] bg-white dark:bg-slate-800 rounded-t-[32px] md:rounded-3xl max-h-[85vh] md:max-h-[70vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-slide-up">
+            <div className="flex justify-center pt-3 pb-1 md:hidden flex-shrink-0">
+              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full" />
+            </div>
+            <div className="overflow-y-auto flex-1 p-6">
+              <h3 className="font-black text-sm text-slate-900 dark:text-white mb-4 hidden md:block">選擇運動類型</h3>
+              <div className="mb-4">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">主分類</h4>
+                <div className="flex flex-wrap gap-2">
+                  {SPORTS_HIERARCHY.map(cat => (
+                    <button
+                      key={cat.name}
+                      onClick={() => toggleHomeMainCategory(cat.name)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${homeMainCategories.includes(cat.name) ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900' : 'bg-transparent text-slate-500 border-slate-100 hover:border-slate-300'}`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-4 border-t border-slate-50 dark:border-slate-700">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">細項標籤</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {SPORTS_HIERARCHY.filter(c => homeMainCategories.includes(c.name)).flatMap(c => c.items).map(item => (
+                    <button
+                      key={item}
+                      onClick={() => toggleHomeSubCategory(item)}
+                      className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all ${homeSubCategories.includes(item) ? 'bg-primary/10 text-primary border-primary/20' : 'bg-transparent text-slate-400 border-transparent hover:text-slate-600'}`}
+                    >
+                      {homeSubCategories.includes(item) ? `✓ ${item}` : `#${item}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => setIsCategoryOpen(false)} className="mt-6 w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-xl text-sm">完成設定</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ActivityFilterDrawer
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        currentFilters={advancedFilters}
+        onApply={setAdvancedFilters}
+        onReset={() => setAdvancedFilters({ cities: ['全台灣'], date: '', minPrice: '', maxPrice: '', levels: [], isNearlyFull: false })}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        darkMode={darkMode}
+        onDarkModeToggle={() => setDarkMode(!darkMode)}
       />
 
       <Toast toasts={toasts} />

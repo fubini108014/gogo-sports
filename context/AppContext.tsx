@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MOCK_ACTIVITIES, MOCK_CLUBS, MOCK_USER, MOCK_NOTIFICATIONS, MOCK_POSTS,
+  MOCK_ACTIVITIES, MOCK_CLUBS, MOCK_USER, MOCK_NOTIFICATIONS, MOCK_POSTS, SPORTS_HIERARCHY,
 } from '../constants';
-import { Activity, Club, Notification, NotificationType, User } from '../types';
+import { Activity, Club, FilterState, DEFAULT_FILTER_STATE, Notification, NotificationType, User } from '../types';
 import { ToastItem } from '../components/Toast';
 
 interface AppContextType {
@@ -27,6 +27,28 @@ interface AppContextType {
   setSelectedActivity: (a: Activity | null) => void;
   isRegistrationOpen: boolean;
   setIsRegistrationOpen: (v: boolean) => void;
+
+  // Settings modal state
+  isSettingsOpen: boolean;
+  setIsSettingsOpen: (v: boolean) => void;
+
+  // Activity filter state
+  isFilterOpen: boolean;
+  setIsFilterOpen: (v: boolean) => void;
+  advancedFilters: FilterState;
+  setAdvancedFilters: (f: FilterState) => void;
+
+  // Home search modal state
+  isMapOpen: boolean;
+  setIsMapOpen: (v: boolean) => void;
+  isCategoryOpen: boolean;
+  setIsCategoryOpen: (v: boolean) => void;
+  homeLocations: string[];
+  homeMainCategories: string[];
+  homeSubCategories: string[];
+  toggleHomeLocation: (loc: string) => void;
+  toggleHomeMainCategory: (name: string) => void;
+  toggleHomeSubCategory: (name: string) => void;
 
   // Handlers
   handleActivityClick: (activity: Activity) => void;
@@ -77,6 +99,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Registration modal
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+
+  // Settings modal
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Activity filter
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterState>(DEFAULT_FILTER_STATE);
+
+  // Home search modals
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [homeLocations, setHomeLocations] = useState<string[]>(['全台灣']);
+  const [homeMainCategories, setHomeMainCategories] = useState<string[]>(['所有運動']);
+  const [homeSubCategories, setHomeSubCategories] = useState<string[]>([]);
+
+  const toggleHomeLocation = (loc: string) => {
+    if (loc === '全台灣') { setHomeLocations(['全台灣']); return; }
+    setHomeLocations(prev => {
+      const filtered = prev.filter(i => i !== '全台灣');
+      const next = filtered.includes(loc) ? filtered.filter(i => i !== loc) : [...filtered, loc];
+      return next.length === 0 ? ['全台灣'] : next;
+    });
+  };
+
+  const toggleHomeMainCategory = (name: string) => {
+    if (name === '所有運動') { setHomeMainCategories(['所有運動']); setHomeSubCategories([]); return; }
+    setHomeMainCategories(prev => {
+      const filtered = prev.filter(i => i !== '所有運動');
+      const next = filtered.includes(name) ? filtered.filter(i => i !== name) : [...filtered, name];
+      if (next.length === 0) { setHomeSubCategories([]); return ['所有運動']; }
+      return next;
+    });
+  };
+
+  const toggleHomeSubCategory = (name: string) => {
+    setHomeSubCategories(prev => prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]);
+  };
 
   // Navigation helpers
   const handleActivityClick = (activity: Activity) => {
@@ -170,6 +229,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       darkMode, setDarkMode,
       selectedActivity, setSelectedActivity,
       isRegistrationOpen, setIsRegistrationOpen,
+      isSettingsOpen, setIsSettingsOpen,
+      isFilterOpen, setIsFilterOpen,
+      advancedFilters, setAdvancedFilters,
+      isMapOpen, setIsMapOpen,
+      isCategoryOpen, setIsCategoryOpen,
+      homeLocations, homeMainCategories, homeSubCategories,
+      toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
       handleActivityClick, handleClubClick,
       handleRegistrationConfirm, handleCancelRegistration,
       handleJoinClub, handleLeaveClub,

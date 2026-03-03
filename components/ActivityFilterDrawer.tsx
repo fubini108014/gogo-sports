@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, RotateCcw } from 'lucide-react';
-import { Level } from '../types';
-import { TAIWAN_CITIES } from '../constants';
-
-interface FilterState {
-  cities: string[];
-  date: string;
-  minPrice: string;
-  maxPrice: string;
-  levels: string[];
-  isNearlyFull: boolean;
-}
+import { FilterState, Level } from '../types';
 
 interface ActivityFilterDrawerProps {
   isOpen: boolean;

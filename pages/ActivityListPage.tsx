@@ -2,17 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { SPORTS_HIERARCHY, SportCategory } from '../constants';
-import { ActivityStatus, Level } from '../types';
+import { ActivityStatus, DEFAULT_FILTER_STATE, Level } from '../types';
 import ActivityList from '../components/ActivityList';
 import ActivityMap from '../components/ActivityMap';
 import CategorySelector from '../components/CategorySelector';
-import ActivityFilterPanel from '../components/ActivityFilterPanel';
 import { Search, ChevronLeft, Filter, List as ListIcon, Map as MapIcon, X } from 'lucide-react';
 
 const ActivityListPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { activities, handleActivityClick } = useAppContext();
+  const { activities, handleActivityClick, isFilterOpen, setIsFilterOpen, advancedFilters, setAdvancedFilters } = useAppContext();
   const initialState = location.state || {};
 
   // View Mode
@@ -27,15 +26,6 @@ const ActivityListPage: React.FC = () => {
     initialState.subCategories || (initialState.subCategory ? [initialState.subCategory] : [])
   );
 
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [advancedFilters, setAdvancedFilters] = useState({
-    cities: initialState.locations || (initialState.location ? [initialState.location] : ['全台灣']),
-    date: initialState.date || '',
-    minPrice: initialState.minPrice || '',
-    maxPrice: initialState.maxPrice || initialState.maxPrice === 0 ? String(initialState.maxPrice) : '',
-    levels: initialState.levels || [] as string[],
-    isNearlyFull: initialState.isNearlyFull || false,
-  });
 
   // Calculate active filter count
   const activeFilterCount = [
@@ -102,14 +92,7 @@ const ActivityListPage: React.FC = () => {
     setSearchTerm('');
     setSelectedMainCategories(['所有運動']);
     setSelectedSubCategories([]);
-    setAdvancedFilters({
-      cities: ['全台灣'],
-      date: '',
-      minPrice: '',
-      maxPrice: '',
-      levels: [],
-      isNearlyFull: false,
-    });
+    setAdvancedFilters(DEFAULT_FILTER_STATE);
   };
 
   const handleMainCategoryToggle = (name: string) => {
@@ -146,7 +129,7 @@ const ActivityListPage: React.FC = () => {
           <ChevronLeft size={24} className="text-gray-900 dark:text-white" />
         </button>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {viewMode === 'list' ? '所有活動' : '活動地圖'}
+          {viewMode === 'list' ? '探索活動' : '活動地圖'}
         </h1>
       </div>
 
@@ -185,14 +168,6 @@ const ActivityListPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Activity Filter Panel (Menu Style) */}
-          <ActivityFilterPanel
-            isOpen={isFilterOpen}
-            onClose={() => setIsFilterOpen(false)}
-            currentFilters={advancedFilters}
-            onApply={setAdvancedFilters}
-            onReset={handleResetFilters}
-          />
         </div>
 
         {/* 2. Category Selector */}

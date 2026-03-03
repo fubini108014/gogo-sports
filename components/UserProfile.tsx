@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { User, Activity, Club } from '../types';
 import ActivityCard from './ActivityCard';
-import SettingsModal from './SettingsModal';
 import { ChevronLeft, Settings, Users, ShieldCheck, ChevronRight, XCircle } from 'lucide-react';
 
 interface UserProfileProps {
@@ -13,13 +12,11 @@ interface UserProfileProps {
   onActivityClick: (activity: Activity) => void;
   onClubClick: (clubId: string) => void;
   onCancelRegistration: (activityId: string) => void;
-  darkMode: boolean;
-  onDarkModeToggle: () => void;
+  onOpenSettings: () => void;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ user, activities, clubs, myActivityIds, onBack, onActivityClick, onClubClick, onCancelRegistration, darkMode, onDarkModeToggle }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ user, activities, clubs, myActivityIds, onBack, onActivityClick, onClubClick, onCancelRegistration, onOpenSettings }) => {
   const [activeTab, setActiveTab] = useState<'activities' | 'clubs'>('activities');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const myActivities = activities.filter(a => myActivityIds.includes(a.id));
 
@@ -40,7 +37,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, activities, clubs, myAc
          </button>
          <h1 className="font-bold text-lg">我的個人檔案</h1>
          <button
-           onClick={() => setIsSettingsOpen(true)}
+           onClick={onOpenSettings}
            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 dark:text-gray-400"
          >
             <Settings size={20} />
@@ -179,8 +176,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, activities, clubs, myAc
           )}
        </div>
 
-       {/* Settings Modal */}
-       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} darkMode={darkMode} onDarkModeToggle={onDarkModeToggle} />
     </div>
   );
 };

@@ -9,7 +9,7 @@ const UserProfilePage: React.FC = () => {
     user, activities, clubs, myActivityIds,
     handleActivityClick, handleClubClick,
     handleCancelRegistration,
-    darkMode, setDarkMode,
+    setIsSettingsOpen,
   } = useAppContext();
 
   return (
@@ -22,8 +22,7 @@ const UserProfilePage: React.FC = () => {
       onActivityClick={handleActivityClick}
       onClubClick={handleClubClick}
       onCancelRegistration={handleCancelRegistration}
-      darkMode={darkMode}
-      onDarkModeToggle={() => setDarkMode(!darkMode)}
+      onOpenSettings={() => setIsSettingsOpen(true)}
     />
   );
 };

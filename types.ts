@@ -1,4 +1,22 @@
 
+export interface FilterState {
+  cities: string[];
+  date: string;
+  minPrice: string;
+  maxPrice: string;
+  levels: string[];
+  isNearlyFull: boolean;
+}
+
+export const DEFAULT_FILTER_STATE: FilterState = {
+  cities: ['全台灣'],
+  date: '',
+  minPrice: '',
+  maxPrice: '',
+  levels: [],
+  isNearlyFull: false,
+};
+
 export enum RegistrationMode {
   LIMITED = 'LIMITED', // Badminton, Basketball (Fixed spots)
   OPEN = 'OPEN',       // Hiking, Running (Flexible)
