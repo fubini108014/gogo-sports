@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Activity, Club } from '../types';
 import ActivityCard from './ActivityCard';
-import { ChevronLeft, Settings, Users, ShieldCheck, ChevronRight, XCircle } from 'lucide-react';
+import { ChevronLeft, Settings, Users, ShieldCheck, ChevronRight, XCircle, LogOut, Pencil, Check, X } from 'lucide-react';
 
 interface UserProfileProps {
   user: User;
@@ -13,10 +13,26 @@ interface UserProfileProps {
   onClubClick: (clubId: string) => void;
   onCancelRegistration: (activityId: string) => void;
   onOpenSettings: () => void;
+  onLogout: () => void;
+  onUpdateProfile: (data: { name?: string }) => Promise<void>;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ user, activities, clubs, myActivityIds, onBack, onActivityClick, onClubClick, onCancelRegistration, onOpenSettings }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ user, activities, clubs, myActivityIds, onBack, onActivityClick, onClubClick, onCancelRegistration, onOpenSettings, onLogout, onUpdateProfile }) => {
   const [activeTab, setActiveTab] = useState<'activities' | 'clubs'>('activities');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(user.name);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim() || editName.trim() === user.name) { setIsEditing(false); return; }
+    setEditSaving(true);
+    try {
+      await onUpdateProfile({ name: editName.trim() });
+      setIsEditing(false);
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const myActivities = activities.filter(a => myActivityIds.includes(a.id));
 
@@ -36,24 +52,57 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, activities, clubs, myAc
             <ChevronLeft size={24} className="text-gray-900 dark:text-white"/>
          </button>
          <h1 className="font-bold text-lg">我的個人檔案</h1>
-         <button
-           onClick={onOpenSettings}
-           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 dark:text-gray-400"
-         >
-            <Settings size={20} />
-         </button>
+         <div className="flex items-center gap-1">
+           <button
+             onClick={onOpenSettings}
+             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 dark:text-gray-400"
+           >
+             <Settings size={20} />
+           </button>
+           <button
+             onClick={onLogout}
+             className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors text-gray-500 dark:text-gray-400 hover:text-red-500"
+             title="登出"
+           >
+             <LogOut size={20} />
+           </button>
+         </div>
        </div>
 
        {/* Profile Card */}
        <div className="px-4 py-6 bg-white dark:bg-gray-800 mb-2">
          <div className="flex items-center gap-4">
             <img src={user.avatar} className="w-20 h-20 rounded-full object-cover border-4 border-gray-50 dark:border-gray-700" alt={user.name} />
-            <div>
-               <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user.name}</h2>
-               <div className="flex gap-2 mt-2">
-                  <span className="text-xs bg-orange-50 text-primary px-2 py-1 rounded-lg font-bold">一般會員</span>
-                  {user.isClubAdmin && <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-lg font-bold">社團管理員</span>}
-               </div>
+            <div className="flex-1 min-w-0">
+              {isEditing ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveProfile(); if (e.key === 'Escape') setIsEditing(false); }}
+                    className="flex-1 text-lg font-bold border-b-2 border-primary bg-transparent text-gray-900 dark:text-white outline-none min-w-0"
+                    maxLength={50}
+                  />
+                  <button onClick={handleSaveProfile} disabled={editSaving} className="p-1 text-green-500 hover:text-green-600 disabled:opacity-50">
+                    <Check size={18} />
+                  </button>
+                  <button onClick={() => { setIsEditing(false); setEditName(user.name); }} className="p-1 text-gray-400 hover:text-gray-600">
+                    <X size={18} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">{user.name}</h2>
+                  <button onClick={() => { setEditName(user.name); setIsEditing(true); }} className="p-1 text-gray-400 hover:text-primary transition-colors flex-shrink-0">
+                    <Pencil size={14} />
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2 mt-2">
+                <span className="text-xs bg-orange-50 text-primary px-2 py-1 rounded-lg font-bold">一般會員</span>
+                {user.isClubAdmin && <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-lg font-bold">社團管理員</span>}
+              </div>
             </div>
          </div>
        </div>

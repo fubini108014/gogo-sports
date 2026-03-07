@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RegistrationMode, Level, ActivityStatus, Club } from '../types';
 import { X, Calendar, MapPin, DollarSign, Users, Target, Info, ChevronRight, CheckCircle } from 'lucide-react';
 
 interface CreateActivityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (activityData: any) => void;
+  onCreate: (activityData: any) => Promise<void>;
   managedClubs: Club[];
 }
 
@@ -17,6 +17,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({ isOpen, onClo
     date: '',
     time: '',
     location: '',
+    city: '台北市',
     price: '',
     mode: RegistrationMode.LIMITED,
     level: Level.INTERMEDIATE,
@@ -25,6 +26,15 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({ isOpen, onClo
     groups: '', // Comma separated string for input
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync clubId when managedClubs loads (fixes race condition on initial mount)
+  useEffect(() => {
+    if (managedClubs.length > 0 && !formData.clubId) {
+      setFormData(prev => ({ ...prev, clubId: managedClubs[0].id }));
+    }
+  }, [managedClubs]);
+
   if (!isOpen) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -32,24 +42,37 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({ isOpen, onClo
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Basic validation
-    if (!formData.title || !formData.date || !formData.clubId) return;
+    if (!formData.title || !formData.date || !formData.clubId || isSubmitting) return;
 
     const newActivity = {
-      ...formData,
+      clubId: formData.clubId,
+      title: formData.title,
+      date: formData.date,
+      time: formData.time,
+      location: formData.location,
+      city: formData.city,
       price: Number(formData.price) || 0,
-      maxParticipants: formData.mode === RegistrationMode.LIMITED ? (Number(formData.maxParticipants) || 0) : undefined,
-      groups: formData.mode === RegistrationMode.OPEN && formData.groups ? formData.groups.split(',').map(g => g.trim()).filter(Boolean) : undefined,
-      status: ActivityStatus.OPEN,
-      currentAppCount: 0,
-      currentInternalCount: 0,
-      image: `https://picsum.photos/seed/${Math.random()}/600/400`,
+      mode: formData.mode,
+      level: formData.level,
+      description: formData.description,
+      maxParticipants: formData.mode === RegistrationMode.LIMITED ? (Number(formData.maxParticipants) || undefined) : undefined,
+      groups: formData.mode === RegistrationMode.OPEN && formData.groups
+        ? formData.groups.split(',').map((g: string) => g.trim()).filter(Boolean)
+        : undefined,
       tags: [formData.mode === RegistrationMode.OPEN ? '戶外' : '室內'],
     };
 
-    onCreate(newActivity);
-    setStep(3); // Success step
+    setIsSubmitting(true);
+    try {
+      await onCreate(newActivity);
+      setStep(3); // Success step — only on API success
+    } catch {
+      // Error toast already shown by handleCreateActivity
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -60,6 +83,7 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({ isOpen, onClo
       date: '',
       time: '',
       location: '',
+      city: '台北市',
       price: '',
       mode: RegistrationMode.LIMITED,
       level: Level.INTERMEDIATE,
@@ -205,18 +229,33 @@ const CreateActivityModal: React.FC<CreateActivityModalProps> = ({ isOpen, onClo
                   </div>
                </div>
 
-               <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">地點</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
-                    <input
-                      type="text"
-                      name="location"
-                      value={formData.location}
+               <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">地點</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
+                      <input
+                        type="text"
+                        name="location"
+                        value={formData.location}
+                        onChange={handleChange}
+                        placeholder="請輸入地點或場館名稱"
+                        className="w-full pl-10 p-3 border border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 rounded-xl outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">城市</label>
+                    <select
+                      name="city"
+                      value={formData.city}
                       onChange={handleChange}
-                      placeholder="請輸入地點或場館名稱"
-                      className="w-full pl-10 p-3 border border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 rounded-xl outline-none focus:ring-2 focus:ring-primary/50"
-                    />
+                      className="w-full p-3 border border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white rounded-xl outline-none focus:ring-2 focus:ring-primary/50 bg-white dark:bg-gray-700"
+                    >
+                      {['台北市','新北市','桃園市','台中市','台南市','高雄市','新竹市','基隆市','嘉義市','宜蘭縣','苗栗縣','彰化縣','南投縣','雲林縣','嘉義縣','屏東縣','花蓮縣','台東縣','澎湖縣','金門縣','連江縣'].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
                   </div>
                </div>
 

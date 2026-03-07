@@ -1,10 +1,26 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  MOCK_ACTIVITIES, MOCK_CLUBS, MOCK_USER, MOCK_NOTIFICATIONS, MOCK_POSTS, SPORTS_HIERARCHY,
-} from '../constants';
+import { SPORTS_HIERARCHY } from '../constants';
 import { Activity, Club, FilterState, DEFAULT_FILTER_STATE, Notification, NotificationType, User } from '../types';
 import { ToastItem } from '../components/Toast';
+import {
+  getToken, clearTokens,
+  apiLogin, apiRegister, apiLogout, apiGetMe,
+  apiGetActivities, apiRegisterActivity, apiCancelRegistration, apiCreateActivity,
+  apiGetClubs, apiJoinClub, apiLeaveClub, apiCreateClub,
+  apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead,
+  apiUpdateProfile,
+} from '../services/api';
+
+const GUEST_USER: User = {
+  id: '',
+  name: '未登入',
+  avatar: 'https://picsum.photos/id/64/200/200',
+  isClubAdmin: false,
+  registeredActivityIds: [],
+  joinedClubIds: [],
+  managedClubIds: [],
+};
 
 interface AppContextType {
   // Data
@@ -13,6 +29,16 @@ interface AppContextType {
   user: User;
   notifications: Notification[];
   myActivityIds: string[];
+  activitiesLoading: boolean;
+  clubsLoading: boolean;
+
+  // Auth
+  isLoggedIn: boolean;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (v: boolean) => void;
+  handleLogin: (email: string, password: string) => Promise<void>;
+  handleLogout: () => Promise<void>;
+  handleRegister: (name: string, email: string, password: string, phone?: string) => Promise<void>;
 
   // Toast
   toasts: ToastItem[];
@@ -55,15 +81,16 @@ interface AppContextType {
   // Handlers
   handleActivityClick: (activity: Activity) => void;
   handleClubClick: (clubId: string) => void;
-  handleRegistrationConfirm: () => void;
+  handleRegistrationConfirm: (group?: string) => void;
   handleCancelRegistration: (activityId: string) => void;
   handleJoinClub: (clubId: string) => void;
   handleLeaveClub: (clubId: string) => void;
   handleMarkAllRead: () => void;
   handleNotificationClick: (id: string) => void;
   handleCreatePost: (content: string) => void;
-  handleCreateActivity: (data: any) => void;
-  handleCreateClub: (data: any) => void;
+  handleCreateActivity: (data: any) => Promise<void>;
+  handleCreateClub: (data: any) => Promise<void>;
+  handleUpdateProfile: (data: { name?: string; bio?: string; phone?: string }) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -78,11 +105,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const navigate = useNavigate();
 
   // Data State
-  const [activities, setActivities] = useState<Activity[]>(MOCK_ACTIVITIES);
-  const [clubs, setClubs] = useState<Club[]>(MOCK_CLUBS);
-  const [user, setUser] = useState<User>(MOCK_USER);
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
-  const [myActivityIds, setMyActivityIds] = useState<string[]>(MOCK_USER.registeredActivityIds);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [clubs, setClubs] = useState<Club[]>([]);
+  const [user, setUser] = useState<User>(GUEST_USER);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [myActivityIds, setMyActivityIds] = useState<string[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [clubsLoading, setClubsLoading] = useState(true);
+
+  // Auth State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Toast State
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -92,11 +125,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   };
 
-  // Dark Mode
-  const [darkMode, setDarkMode] = useState(false);
+  // Dark Mode (persisted to localStorage)
+  const [darkMode, setDarkModeState] = useState(() => localStorage.getItem('gogo_dark_mode') === 'true');
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
+  const setDarkMode = (v: boolean) => {
+    localStorage.setItem('gogo_dark_mode', String(v));
+    setDarkModeState(v);
+  };
 
   // Registration modal
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
@@ -116,6 +153,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [homeMainCategories, setHomeMainCategories] = useState<string[]>(['所有運動']);
   const [homeSubCategories, setHomeSubCategories] = useState<string[]>([]);
 
+  // ── Bootstrap: load data on mount ────────────────────────────────
+  useEffect(() => {
+    // Load activities
+    apiGetActivities({ limit: '50' })
+      .then(({ data }) => setActivities(data))
+      .catch(() => addToast('無法載入活動資料', 'error'))
+      .finally(() => setActivitiesLoading(false));
+
+    // Load clubs
+    apiGetClubs({ limit: '50' })
+      .then(({ data }) => setClubs(data))
+      .catch(() => addToast('無法載入社團資料', 'error'))
+      .finally(() => setClubsLoading(false));
+
+    // If token exists, load current user
+    if (getToken()) {
+      apiGetMe()
+        .then(u => {
+          setUser(u);
+          setMyActivityIds(u.registeredActivityIds);
+          setIsLoggedIn(true);
+          return apiGetNotifications();
+        })
+        .then(({ data }) => setNotifications(data))
+        .catch(() => {
+          // Token expired or invalid
+          clearTokens();
+        });
+    }
+  }, []);
+
+  // ── Auth ─────────────────────────────────────────────────────────
+  const handleLogin = async (email: string, password: string) => {
+    const u = await apiLogin(email, password);
+    setUser(u);
+    setMyActivityIds(u.registeredActivityIds);
+    setIsLoggedIn(true);
+    addToast(`歡迎回來，${u.name}！`, 'success');
+    // Load notifications after login
+    apiGetNotifications()
+      .then(({ data }) => setNotifications(data))
+      .catch(() => {});
+    // Re-load clubs to get isJoined state
+    apiGetClubs({ limit: '50' }).then(({ data }) => setClubs(data)).catch(() => {});
+  };
+
+  const handleRegister = async (name: string, email: string, password: string, phone?: string) => {
+    const u = await apiRegister(name, email, password, phone);
+    setUser(u);
+    setMyActivityIds([]);
+    setIsLoggedIn(true);
+    addToast(`帳號建立成功，歡迎加入 GoGo Sports！`, 'success');
+  };
+
+  const handleLogout = async () => {
+    await apiLogout();
+    setUser(GUEST_USER);
+    setMyActivityIds([]);
+    setNotifications([]);
+    setIsLoggedIn(false);
+    addToast('已登出', 'info');
+    // Reload clubs without auth (no isJoined info needed)
+    apiGetClubs({ limit: '50' }).then(({ data }) => setClubs(data)).catch(() => {});
+  };
+
+  // ── Auth guard helper ─────────────────────────────────────────────
+  const requireAuth = (): boolean => {
+    if (!isLoggedIn) {
+      setIsAuthModalOpen(true);
+      return false;
+    }
+    return true;
+  };
+
+  // ── Home location / category toggles ─────────────────────────────
   const toggleHomeLocation = (loc: string) => {
     if (loc === '全台灣') { setHomeLocations(['全台灣']); return; }
     setHomeLocations(prev => {
@@ -139,7 +251,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setHomeSubCategories(prev => prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]);
   };
 
-  // Navigation helpers
+  // ── Navigation ────────────────────────────────────────────────────
   const handleActivityClick = (activity: Activity) => {
     setSelectedActivity(activity);
     navigate(`/activities/${activity.id}`);
@@ -151,44 +263,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo(0, 0);
   };
 
-  // Registration
-  const handleRegistrationConfirm = () => {
-    if (selectedActivity && !myActivityIds.includes(selectedActivity.id)) {
-      setMyActivityIds(prev => [...prev, selectedActivity.id]);
-      addToast(`已成功報名「${selectedActivity.title}」`, 'success');
-    }
+  // ── Registration ──────────────────────────────────────────────────
+  const handleRegistrationConfirm = (group?: string) => {
+    if (!selectedActivity) return;
+    if (!requireAuth()) return;
+
+    apiRegisterActivity(selectedActivity.id, group)
+      .then(() => {
+        setMyActivityIds(prev => [...prev, selectedActivity.id]);
+        setUser(prev => ({
+          ...prev,
+          registeredActivityIds: [...prev.registeredActivityIds, selectedActivity.id],
+        }));
+        addToast(`已成功報名「${selectedActivity.title}」`, 'success');
+      })
+      .catch((err: any) => {
+        addToast(err.message || '報名失敗', 'error');
+      });
+
     setIsRegistrationOpen(false);
   };
 
   const handleCancelRegistration = (activityId: string) => {
+    if (!requireAuth()) return;
     const activity = activities.find(a => a.id === activityId);
-    setMyActivityIds(prev => prev.filter(id => id !== activityId));
-    if (activity) addToast(`已取消「${activity.title}」的報名`, 'info');
+
+    apiCancelRegistration(activityId)
+      .then(() => {
+        setMyActivityIds(prev => prev.filter(id => id !== activityId));
+        setUser(prev => ({
+          ...prev,
+          registeredActivityIds: prev.registeredActivityIds.filter(id => id !== activityId),
+        }));
+        if (activity) addToast(`已取消「${activity.title}」的報名`, 'info');
+      })
+      .catch((err: any) => {
+        addToast(err.message || '取消報名失敗', 'error');
+      });
   };
 
-  // Club Join / Leave
+  // ── Club ──────────────────────────────────────────────────────────
   const handleJoinClub = (clubId: string) => {
+    if (!requireAuth()) return;
     const club = clubs.find(c => c.id === clubId);
-    setUser(prev => ({ ...prev, joinedClubIds: [...prev.joinedClubIds, clubId] }));
-    setClubs(prev => prev.map(c => c.id === clubId ? { ...c, membersCount: c.membersCount + 1 } : c));
-    if (club) addToast(`已加入「${club.name}」`, 'success');
+
+    apiJoinClub(clubId)
+      .then(({ membersCount }) => {
+        setUser(prev => ({ ...prev, joinedClubIds: [...prev.joinedClubIds, clubId] }));
+        setClubs(prev => prev.map(c => c.id === clubId ? { ...c, membersCount } : c));
+        if (club) addToast(`已加入「${club.name}」`, 'success');
+      })
+      .catch((err: any) => {
+        addToast(err.message || '加入社團失敗', 'error');
+      });
   };
 
   const handleLeaveClub = (clubId: string) => {
+    if (!requireAuth()) return;
     const club = clubs.find(c => c.id === clubId);
-    setUser(prev => ({ ...prev, joinedClubIds: prev.joinedClubIds.filter(id => id !== clubId) }));
-    setClubs(prev => prev.map(c => c.id === clubId ? { ...c, membersCount: c.membersCount - 1 } : c));
-    if (club) addToast(`已退出「${club.name}」`, 'info');
+
+    apiLeaveClub(clubId)
+      .then(({ membersCount }) => {
+        setUser(prev => ({ ...prev, joinedClubIds: prev.joinedClubIds.filter(id => id !== clubId) }));
+        setClubs(prev => prev.map(c => c.id === clubId ? { ...c, membersCount } : c));
+        if (club) addToast(`已退出「${club.name}」`, 'info');
+      })
+      .catch((err: any) => {
+        addToast(err.message || '退出社團失敗', 'error');
+      });
   };
 
-  // Notifications
+  // ── Notifications ─────────────────────────────────────────────────
   const handleMarkAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    if (!isLoggedIn) return;
+    apiMarkAllNotificationsRead()
+      .then(() => setNotifications(prev => prev.map(n => ({ ...n, isRead: true }))))
+      .catch(() => {});
   };
 
   const handleNotificationClick = (id: string) => {
     const notification = notifications.find(n => n.id === id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    if (isLoggedIn) {
+      apiMarkNotificationRead(id).catch(() => {});
+    }
     if (!notification?.linkId) return;
 
     if (notification.type === NotificationType.ACTIVITY) {
@@ -197,36 +355,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else if (notification.type === NotificationType.INVITE) {
       handleClubClick(notification.linkId);
     } else if (notification.type === NotificationType.INTERACTION) {
-      const post = MOCK_POSTS.find(p => p.id === notification.linkId);
-      if (post) handleClubClick(post.clubId);
+      // linkId for INTERACTION is a clubId
+      if (notification.linkId) handleClubClick(notification.linkId);
     }
   };
 
-  // Create Actions
+  // ── Create ────────────────────────────────────────────────────────
   const handleCreatePost = (content: string) => {
-    console.log('Creating post:', content);
+    if (!requireAuth()) return;
     addToast('貼文發布成功', 'success');
   };
 
-  const handleCreateActivity = (activityData: any) => {
-    const newActivity: Activity = { ...activityData, id: `a${Date.now()}` };
-    setActivities(prev => [newActivity, ...prev]);
+  const handleCreateActivity = async (activityData: any): Promise<void> => {
+    if (!requireAuth()) throw new Error('unauthenticated');
+
+    try {
+      const newActivity = await apiCreateActivity(activityData);
+      setActivities(prev => [newActivity, ...prev]);
+      addToast('活動建立成功！', 'success');
+    } catch (err: any) {
+      if (err.message !== 'unauthenticated') {
+        addToast(err.message || '建立活動失敗', 'error');
+      }
+      throw err;
+    }
   };
 
-  const handleCreateClub = (clubData: any) => {
-    const newClub: Club = { ...clubData, id: `c${Date.now()}` };
-    setClubs(prev => [newClub, ...prev]);
-    setUser(prev => ({
-      ...prev,
-      joinedClubIds: [...prev.joinedClubIds, newClub.id],
-      managedClubIds: [...prev.managedClubIds, newClub.id],
-      isClubAdmin: true,
-    }));
+  const handleUpdateProfile = async (data: { name?: string; bio?: string; phone?: string }) => {
+    const updated = await apiUpdateProfile(data);
+    setUser(prev => ({ ...prev, name: updated.name, avatar: updated.avatar }));
+    addToast('個人資料已更新', 'success');
+  };
+
+  const handleCreateClub = async (clubData: any): Promise<void> => {
+    if (!requireAuth()) throw new Error('unauthenticated');
+
+    try {
+      const newClub = await apiCreateClub(clubData);
+      setClubs(prev => [newClub, ...prev]);
+      setUser(prev => ({
+        ...prev,
+        joinedClubIds: [...prev.joinedClubIds, newClub.id],
+        managedClubIds: [...prev.managedClubIds, newClub.id],
+        isClubAdmin: true,
+      }));
+      addToast('社團建立成功！', 'success');
+    } catch (err: any) {
+      if (err.message !== 'unauthenticated') {
+        addToast(err.message || '建立社團失敗', 'error');
+      }
+      throw err;
+    }
   };
 
   return (
     <AppContext.Provider value={{
       activities, clubs, user, notifications, myActivityIds,
+      activitiesLoading, clubsLoading,
+      isLoggedIn, isAuthModalOpen, setIsAuthModalOpen,
+      handleLogin, handleLogout, handleRegister,
       toasts, addToast,
       darkMode, setDarkMode,
       selectedActivity, setSelectedActivity,
@@ -243,7 +430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       handleRegistrationConfirm, handleCancelRegistration,
       handleJoinClub, handleLeaveClub,
       handleMarkAllRead, handleNotificationClick,
-      handleCreatePost, handleCreateActivity, handleCreateClub,
+      handleCreatePost, handleCreateActivity, handleCreateClub, handleUpdateProfile,
     }}>
       {children}
     </AppContext.Provider>

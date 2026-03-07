@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Club, Activity, PostType } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Club, Activity, Post, PostType } from '../types';
 import { MapPin, Users, Star, Calendar as CalendarIcon, Image as ImageIcon, ChevronRight, PenSquare, Heart, MessageSquare, Filter, ArrowUpDown, ChevronLeft, MoreHorizontal } from 'lucide-react';
-import { MOCK_USER, MOCK_POSTS } from '../constants';
 import CreatePostModal from './CreatePostModal';
+import { useAppContext } from '../context/AppContext';
+import { apiGetClubPosts, apiTogglePostLike, apiCreatePost } from '../services/api';
 
 interface ClubProfileProps {
   club: Club;
@@ -17,27 +18,40 @@ interface ClubProfileProps {
 }
 
 const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onActivityClick, joinedClubIds, managedClubIds, onJoinClub, onLeaveClub, onToast }) => {
+  const { user, isLoggedIn } = useAppContext();
   const [activeTab, setActiveTab] = useState<'feed' | 'activities' | 'album'>('feed');
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [postFilter, setPostFilter] = useState<PostType | 'ALL'>('ALL');
   const [postSort, setPostSort] = useState<'newest' | 'oldest'>('newest');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [postLikeCounts, setPostLikeCounts] = useState<Record<string, number>>({});
+  const [clubPosts, setClubPosts] = useState<Post[]>([]);
 
   // Calendar State
   const [calendarView, setCalendarView] = useState<'week' | 'month' | 'year'>('week');
-  // Initialize to a date within the mock data range (Nov 2023)
-  const [calendarDate, setCalendarDate] = useState<Date>(new Date('2023-11-13'));
-  const [selectedDate, setSelectedDate] = useState<string>('2023-11-14');
+  const [calendarDate, setCalendarDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Filter activities for this club from the passed prop
   const clubActivities = activities.filter(a => a.clubId === club.id);
-  const clubPosts = MOCK_POSTS.filter(p => p.clubId === club.id);
+
+  // Fetch posts from API
+  useEffect(() => {
+    apiGetClubPosts(club.id).then(({ data }) => {
+      setClubPosts(data);
+      const initLiked = new Set(data.filter(p => p.isLiked).map(p => p.id));
+      setLikedPosts(initLiked);
+    }).catch(() => {});
+  }, [club.id]);
 
   const handlePost = (content: string) => {
-    console.log("New Post Content:", content);
+    apiCreatePost(club.id, 'SHARE', content)
+      .then(newPost => {
+        setClubPosts(prev => [newPost, ...prev]);
+        onToast('貼文已發布', 'success');
+      })
+      .catch(() => onToast('發布失敗', 'error'));
     setIsPostModalOpen(false);
-    onToast('貼文已發布', 'success');
   };
 
   const getFilteredAndSortedPosts = () => {
@@ -59,14 +73,14 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
     return (
       <div className="space-y-4">
         {/* Quick Post Input Trigger for Admin */}
-        {MOCK_USER.isClubAdmin && (
+        {isLoggedIn && managedClubIds.includes(club.id) && (
           <div
             onClick={() => setIsPostModalOpen(true)}
             className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex gap-3 items-center group"
           >
             <img
-              src={MOCK_USER.avatar}
-              alt={MOCK_USER.name}
+              src={user.avatar}
+              alt={user.name}
               className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 object-cover border border-gray-100 dark:border-gray-600"
             />
             <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full px-4 py-2.5 text-gray-400 dark:text-gray-400 text-sm font-medium group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors text-left truncate">
@@ -156,6 +170,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
                    <div className="flex items-center gap-4">
                       <button
                         onClick={() => {
+                          if (!isLoggedIn) return;
                           const isLiked = likedPosts.has(post.id);
                           setLikedPosts(prev => {
                             const next = new Set(prev);
@@ -166,6 +181,9 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
                             ...prev,
                             [post.id]: (prev[post.id] ?? post.likes) + (isLiked ? -1 : 1),
                           }));
+                          apiTogglePostLike(club.id, post.id)
+                            .then(({ likes }) => setPostLikeCounts(prev => ({ ...prev, [post.id]: likes })))
+                            .catch(() => {});
                         }}
                         className={`flex items-center gap-1.5 text-xs font-bold transition-colors active:scale-90 ${likedPosts.has(post.id) ? 'text-red-500' : 'text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400'}`}
                       >

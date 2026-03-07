@@ -11,6 +11,7 @@ import RegistrationModal from './RegistrationModal';
 import SettingsModal from './SettingsModal';
 import ActivityFilterDrawer from './ActivityFilterDrawer';
 import SportCategoryModal from './SportCategoryModal';
+import AuthModal from './AuthModal';
 import Toast from './Toast';
 
 const Layout: React.FC = () => {
@@ -19,6 +20,8 @@ const Layout: React.FC = () => {
   const {
     user, clubs, notifications,
     toasts,
+    isLoggedIn, isAuthModalOpen, setIsAuthModalOpen,
+    handleLogin, handleLogout, handleRegister,
     selectedActivity, isRegistrationOpen, setIsRegistrationOpen,
     isSettingsOpen, setIsSettingsOpen,
     isFilterOpen, setIsFilterOpen,
@@ -27,10 +30,11 @@ const Layout: React.FC = () => {
     isCategoryOpen, setIsCategoryOpen,
     homeLocations, homeMainCategories, homeSubCategories,
     toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
-    setHomeSubCategories,
+    setHomeMainCategories, setHomeSubCategories,
     darkMode, setDarkMode,
     handleRegistrationConfirm,
     handleCreatePost, handleCreateActivity, handleCreateClub,
+    addToast,
   } = useAppContext();
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -44,8 +48,15 @@ const Layout: React.FC = () => {
 
   const handleCreateAction = (action: 'ACTIVITY' | 'CLUB' | 'POST') => {
     setIsCreateMenuOpen(false);
-    if (action === 'POST') setIsPostModalOpen(true);
-    else if (action === 'ACTIVITY') setIsCreateActivityOpen(true);
+    if (action === 'POST') {
+      // Post requires club context — guide user to their club
+      if (managedClubs.length > 0) {
+        navigate(`/clubs/${managedClubs[0].id}`);
+        addToast('請在社團頁面中發布貼文', 'info');
+      } else {
+        setIsPostModalOpen(true);
+      }
+    } else if (action === 'ACTIVITY') setIsCreateActivityOpen(true);
     else if (action === 'CLUB') setIsCreateClubOpen(true);
   };
 
@@ -98,17 +109,26 @@ const Layout: React.FC = () => {
               )}
             </button>
             
-            <button
-              onClick={() => navigate('/profile')}
-              className="flex items-center gap-2 pl-2 pr-1 py-1 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all group"
-            >
-              <span className="hidden sm:block text-xs font-bold text-gray-600 dark:text-gray-300 ml-2">
-                {user.name}
-              </span>
-              <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white dark:border-gray-700 shadow-sm">
-                <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
-              </div>
-            </button>
+            {isLoggedIn ? (
+              <button
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-2 pl-2 pr-1 py-1 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all group"
+              >
+                <span className="hidden sm:block text-xs font-bold text-gray-600 dark:text-gray-300 ml-2">
+                  {user.name}
+                </span>
+                <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white dark:border-gray-700 shadow-sm">
+                  <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="px-4 py-1.5 bg-primary text-white text-sm font-black rounded-full hover:bg-orange-600 transition-colors"
+              >
+                登入
+              </button>
+            )}
           </div>
         </div>
       </nav>
@@ -233,6 +253,13 @@ const Layout: React.FC = () => {
       </div>
 
       {/* Modals */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+      />
+
       {selectedActivity && (
         <RegistrationModal
           activity={selectedActivity}

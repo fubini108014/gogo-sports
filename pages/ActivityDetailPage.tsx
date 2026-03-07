@@ -1,17 +1,42 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import ActivityDetail from '../components/ActivityDetail';
 import ActivityMap from '../components/ActivityMap';
+import { Activity } from '../types';
+import { apiGetActivity } from '../services/api';
 
 const ActivityDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { activities, clubs, myActivityIds, setSelectedActivity, setIsRegistrationOpen } = useAppContext();
 
-  const activity = activities.find(a => a.id === id);
+  const [fetchedActivity, setFetchedActivity] = useState<Activity | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const activityFromContext = activities.find(a => a.id === id);
+
+  useEffect(() => {
+    if (!activityFromContext && id) {
+      setLoading(true);
+      apiGetActivity(id)
+        .then(a => setFetchedActivity(a))
+        .catch(() => setFetchedActivity(null))
+        .finally(() => setLoading(false));
+    }
+  }, [id, activityFromContext]);
+
+  const activity = activityFromContext ?? fetchedActivity;
   const club = activity ? clubs.find(c => c.id === activity.clubId) : undefined;
   const isRegistered = activity ? myActivityIds.includes(activity.id) : false;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!activity) {
     return (

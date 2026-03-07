@@ -3,7 +3,11 @@
     "allow": [
       "Bash(npm install react-router-dom leaflet react-leaflet)",
       "Bash(npm install -D @types/leaflet)",
-      "Bash(npx tsc --noEmit)"
+      "Bash(npx tsc --noEmit)",
+      "Bash(docker run -d --name gogosports-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=gogosports -p 5432:5432 postgres:16)",
+      "Bash(\"/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe\" run -d --name gogosports-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=gogosports -p 5432:5432 postgres:16)",
+      "Bash(npx prisma db seed)",
+      "Bash(npm run db:seed)"
     ]
   }
 }

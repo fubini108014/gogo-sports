@@ -8,19 +8,23 @@ interface ActivityListProps {
   activities: Activity[];
   onActivityClick: (activity: Activity) => void;
   searchTerm?: string;
+  isLoading?: boolean;
 }
 
-const ActivityList: React.FC<ActivityListProps> = ({ 
-  activities, 
-  onActivityClick, 
-  searchTerm = '' 
+const ActivityList: React.FC<ActivityListProps> = ({
+  activities,
+  onActivityClick,
+  searchTerm = '',
+  isLoading: externalLoading,
 }) => {
-  // Skeleton loading state (simulate initial load)
-  const [isLoading, setIsLoading] = useState(true);
+  // Skeleton loading state: use external flag if provided, else simulate with timer
+  const [internalLoading, setInternalLoading] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 500);
+    if (externalLoading !== undefined) return;
+    const t = setTimeout(() => setInternalLoading(false), 500);
     return () => clearTimeout(t);
-  }, []);
+  }, [externalLoading]);
+  const isLoading = externalLoading !== undefined ? externalLoading : internalLoading;
 
   // Pagination state
   const [displayCount, setDisplayCount] = useState(6);

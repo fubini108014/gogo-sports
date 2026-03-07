@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum RegistrationMode {
+  LIMITED
+  OPEN
+}
+
+enum ActivityStatus {
+  OPEN
+  FULL
+  CANCELLED
+  ENDED
+}
+
+enum RegistrationStatus {
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+}
+
+enum Level {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  PRO
+}
+
+enum PostType {
+  ANNOUNCEMENT
+  SHARE
+  PHOTO
+}
+
+enum NotificationType {
+  SYSTEM
+  ACTIVITY
+  INTERACTION
+  INVITE
+}
+
+// ─────────────────────────────────────────────
+// User
+// ─────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  avatar       String?
+  bio          String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  registrations   Registration[]
+  clubMemberships ClubMember[]
+  clubAdminRoles  ClubAdmin[]
+  posts           Post[]
+  postLikes       PostLike[]
+  comments        Comment[]
+  notifications   Notification[]
+  refreshTokens   RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────────
+// Club
+// ─────────────────────────────────────────────
+
+model Club {
+  id          String   @id @default(cuid())
+  name        String
+  logo        String?
+  coverImage  String?
+  rating      Float    @default(0)
+  description String
+  tags        String[]
+  city        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activities Activity[]
+  members    ClubMember[]
+  admins     ClubAdmin[]
+  posts      Post[]
+
+  @@map("clubs")
+}
+
+model ClubMember {
+  userId   String
+  clubId   String
+  joinedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@id([userId, clubId])
+  @@map("club_members")
+}
+
+model ClubAdmin {
+  userId String
+  clubId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@id([userId, clubId])
+  @@map("club_admins")
+}
+
+// ─────────────────────────────────────────────
+// Activity
+// ─────────────────────────────────────────────
+
+model Activity {
+  id                   String         @id @default(cuid())
+  clubId               String
+  title                String
+  date                 DateTime
+  time                 String
+  location             String
+  city                 String
+  price                Int
+  mode                 RegistrationMode
+  status               ActivityStatus @default(OPEN)
+  maxParticipants      Int?
+  currentInternalCount Int            @default(0)
+  currentAppCount      Int            @default(0)
+  groups               String[]
+  level                Level
+  image                String?
+  description          String
+  tags                 String[]
+  lat                  Float?
+  lng                  Float?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  club          Club           @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+
+  @@map("activities")
+}
+
+model Registration {
+  id         String             @id @default(cuid())
+  userId     String
+  activityId String
+  group      String?
+  status     RegistrationStatus @default(CONFIRMED)
+  createdAt  DateTime           @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityId])
+  @@map("registrations")
+}
+
+// ─────────────────────────────────────────────
+// Post & Comment
+// ─────────────────────────────────────────────
+
+model Post {
+  id        String   @id @default(cuid())
+  clubId    String
+  authorId  String
+  type      PostType
+  content   String
+  images    String[]
+  likes     Int      @default(0)
+  comments  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club     Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  postLikes PostLike[]
+  postComments Comment[]
+
+  @@map("posts")
+}
+
+model PostLike {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@map("post_likes")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+// ─────────────────────────────────────────────
+// Notification
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  content   String
+  isRead    Boolean          @default(false)
+  linkId    String?
+  linkType  String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}

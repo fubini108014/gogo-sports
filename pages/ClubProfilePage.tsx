@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import ClubProfile from '../components/ClubProfile';
+import { Club } from '../types';
+import { apiGetClub } from '../services/api';
 
 const ClubProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,7 +13,30 @@ const ClubProfilePage: React.FC = () => {
     handleActivityClick, handleJoinClub, handleLeaveClub, addToast,
   } = useAppContext();
 
-  const club = clubs.find(c => c.id === id);
+  const [fetchedClub, setFetchedClub] = useState<Club | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const clubFromContext = clubs.find(c => c.id === id);
+
+  useEffect(() => {
+    if (!clubFromContext && id) {
+      setLoading(true);
+      apiGetClub(id)
+        .then(c => setFetchedClub(c))
+        .catch(() => setFetchedClub(null))
+        .finally(() => setLoading(false));
+    }
+  }, [id, clubFromContext]);
+
+  const club = clubFromContext ?? fetchedClub;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!club) {
     return (

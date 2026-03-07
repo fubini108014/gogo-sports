@@ -5,7 +5,7 @@ import { SPORTS_HIERARCHY } from '../constants';
 interface CreateClubModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (clubData: any) => void;
+  onCreate: (clubData: any) => Promise<void>;
 }
 
 const CreateClubModal: React.FC<CreateClubModalProps> = ({ isOpen, onClose, onCreate }) => {
@@ -15,22 +15,28 @@ const CreateClubModal: React.FC<CreateClubModalProps> = ({ isOpen, onClose, onCr
     category: SPORTS_HIERARCHY[1].name, // Default to Ball Sports
   });
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = () => {
-    if (!formData.name) return;
+  const handleSubmit = async () => {
+    if (!formData.name || isSubmitting) return;
+    if (formData.description.length < 10) return;
 
+    setIsSubmitting(true);
     const newClub = {
-      ...formData,
-      logo: `https://picsum.photos/seed/${Math.random()}/200/200`,
-      rating: 5.0,
-      membersCount: 1,
-      tags: [formData.category], // Simplified tags
+      name: formData.name,
+      description: formData.description,
+      tags: [formData.category],
+      logo: `https://picsum.photos/seed/${encodeURIComponent(formData.name)}/200/200`,
     };
 
-    onCreate(newClub);
-    setIsSuccess(true);
+    try {
+      await onCreate(newClub);
+      setIsSuccess(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -100,13 +106,22 @@ const CreateClubModal: React.FC<CreateClubModalProps> = ({ isOpen, onClose, onCr
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-1.5">社團簡介</label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-1.5">
+                  社團簡介 <span className="text-xs font-normal text-gray-400">(至少 10 字)</span>
+                </label>
                 <textarea
                   value={formData.description}
                   onChange={e => setFormData({...formData, description: e.target.value})}
                   placeholder="簡單介紹一下社團的宗旨與活動風格..."
-                  className="w-full p-3 h-32 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-primary/50 resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                  className={`w-full p-3 h-32 border rounded-xl outline-none focus:ring-2 focus:ring-primary/50 resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${
+                    formData.description.length > 0 && formData.description.length < 10
+                      ? 'border-red-300 dark:border-red-700'
+                      : 'border-gray-200 dark:border-gray-600'
+                  }`}
                 ></textarea>
+                {formData.description.length > 0 && formData.description.length < 10 && (
+                  <p className="text-xs text-red-500 mt-1">還需要 {10 - formData.description.length} 個字</p>
+                )}
               </div>
             </div>
 
@@ -119,10 +134,10 @@ const CreateClubModal: React.FC<CreateClubModalProps> = ({ isOpen, onClose, onCr
                </button>
                <button
                 onClick={handleSubmit}
-                disabled={!formData.name}
+                disabled={!formData.name || formData.description.length < 10 || isSubmitting}
                 className="px-6 py-2.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-600 disabled:opacity-50 disabled:shadow-none transition-all"
                >
-                 立即創社
+                 {isSubmitting ? '建立中...' : '立即創社'}
                </button>
             </div>
           </>

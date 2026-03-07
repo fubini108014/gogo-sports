@@ -6,7 +6,7 @@ interface RegistrationModalProps {
   activity: Activity;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (group?: string) => void;
 }
 
 const RegistrationModal: React.FC<RegistrationModalProps> = ({ activity, isOpen, onClose, onConfirm }) => {
@@ -39,10 +39,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ activity, isOpen,
   };
 
   const handleSubmit = () => {
-    // Simulate API call
-    setTimeout(() => {
-      onConfirm();
-    }, 500);
+    onConfirm(selectedGroup || undefined);
   };
 
   return (
