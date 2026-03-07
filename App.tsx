@@ -10,6 +10,7 @@ import ClubProfilePage from './pages/ClubProfilePage';
 import UserProfilePage from './pages/UserProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import MessagesPage from './pages/MessagesPage';
+import ConversationPage from './pages/ConversationPage';
 
 const App: React.FC = () => (
   <AppProvider>
@@ -24,6 +25,8 @@ const App: React.FC = () => (
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="messages" element={<MessagesPage />} />
       </Route>
+      {/* Full-screen conversation — no layout wrapper */}
+      <Route path="/messages/:id" element={<ConversationPage />} />
     </Routes>
   </AppProvider>
 );

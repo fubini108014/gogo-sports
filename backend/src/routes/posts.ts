@@ -5,7 +5,7 @@ import { authenticate } from '../middleware/authenticate.js'
 const createPostSchema = z.object({
   type: z.enum(['ANNOUNCEMENT', 'SHARE', 'PHOTO']),
   content: z.string().min(1).max(2000),
-  images: z.array(z.string().url()).optional(),
+  images: z.array(z.string()).optional(),
 })
 
 const postRoutes: FastifyPluginAsync = async (fastify) => {
@@ -96,7 +96,7 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.patch('/:clubId/posts/:postId', { preHandler: authenticate }, async (request, reply) => {
     const { userId } = request.user
     const { clubId, postId } = request.params as { clubId: string; postId: string }
-    const body = createPostSchema.partial().parse(request.body)
+    const body = createPostSchema.pick({ content: true }).parse(request.body)
 
     const post = await fastify.prisma.post.findUnique({ where: { id: postId } })
     if (!post || post.clubId !== clubId) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '貼文不存在' })
@@ -106,8 +106,13 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: '無編輯權限' })
     }
 
-    const updated = await fastify.prisma.post.update({ where: { id: postId }, data: body })
-    reply.send(updated)
+    const updated = await fastify.prisma.post.update({
+      where: { id: postId },
+      data: { content: body.content },
+      include: { author: { select: { id: true, name: true, avatar: true } } },
+    })
+
+    reply.send({ ...updated, author: { ...updated.author, isAdmin: !!isAdmin } })
   })
 
   // DELETE /clubs/:clubId/posts/:postId
@@ -155,7 +160,7 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     }
   })
 
-  // GET /clubs/:clubId/posts/:postId/comments
+  // GET /clubs/:clubId/posts/:postId/comments  (top-level only, replies nested)
   fastify.get('/:clubId/posts/:postId/comments', async (request, reply) => {
     const { postId } = request.params as { clubId: string; postId: string }
     const q = request.query as Record<string, string>
@@ -165,23 +170,29 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
 
     const [data, total] = await Promise.all([
       fastify.prisma.comment.findMany({
-        where: { postId },
-        include: { author: { select: { id: true, name: true, avatar: true } } },
+        where: { postId, parentId: null },
+        include: {
+          author: { select: { id: true, name: true, avatar: true } },
+          replies: {
+            include: { author: { select: { id: true, name: true, avatar: true } } },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
         orderBy: { createdAt: 'asc' },
         skip,
         take: limit,
       }),
-      fastify.prisma.comment.count({ where: { postId } }),
+      fastify.prisma.comment.count({ where: { postId, parentId: null } }),
     ])
 
     reply.send({ data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
   })
 
-  // POST /clubs/:clubId/posts/:postId/comments  (需為社團成員)
+  // POST /clubs/:clubId/posts/:postId/comments  (需為社團成員; 可帶 parentId 表示回覆)
   fastify.post('/:clubId/posts/:postId/comments', { preHandler: authenticate }, async (request, reply) => {
     const { userId } = request.user
     const { clubId, postId } = request.params as { clubId: string; postId: string }
-    const { content } = request.body as { content: string }
+    const { content, parentId } = request.body as { content: string; parentId?: string }
 
     if (!content || content.trim().length === 0) {
       return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: '留言內容不可為空' })
@@ -192,16 +203,52 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     })
     if (!isMember) return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: '只有社團成員可以留言' })
 
+    // Validate parentId belongs to the same post
+    if (parentId) {
+      const parent = await fastify.prisma.comment.findUnique({ where: { id: parentId } })
+      if (!parent || parent.postId !== postId) {
+        return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: '無效的回覆目標' })
+      }
+    }
+
     const comment = await fastify.prisma.$transaction(async (tx) => {
       const c = await tx.comment.create({
-        data: { postId, authorId: userId, content: content.trim() },
+        data: { postId, authorId: userId, content: content.trim(), parentId: parentId ?? null },
         include: { author: { select: { id: true, name: true, avatar: true } } },
       })
-      await tx.post.update({ where: { id: postId }, data: { comments: { increment: 1 } } })
+      // Only increment post comment count for top-level comments
+      if (!parentId) {
+        await tx.post.update({ where: { id: postId }, data: { comments: { increment: 1 } } })
+      }
       return c
     })
 
     reply.status(201).send(comment)
+  })
+
+  // DELETE /clubs/:clubId/posts/:postId/comments/:commentId
+  fastify.delete('/:clubId/posts/:postId/comments/:commentId', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const { clubId, postId, commentId } = request.params as { clubId: string; postId: string; commentId: string }
+
+    const comment = await fastify.prisma.comment.findUnique({ where: { id: commentId } })
+    if (!comment || comment.postId !== postId) {
+      return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '留言不存在' })
+    }
+
+    const isAdmin = await fastify.prisma.clubAdmin.findUnique({ where: { userId_clubId: { userId, clubId } } })
+    if (comment.authorId !== userId && !isAdmin) {
+      return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: '無刪除權限' })
+    }
+
+    await fastify.prisma.$transaction(async (tx) => {
+      await tx.comment.delete({ where: { id: commentId } })
+      if (!comment.parentId) {
+        await tx.post.update({ where: { id: postId }, data: { comments: { decrement: 1 } } })
+      }
+    })
+
+    reply.status(204).send()
   })
 }
 

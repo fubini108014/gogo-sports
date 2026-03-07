@@ -2,7 +2,10 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
+import multipart from '@fastify/multipart'
+import staticFiles from '@fastify/static'
 import { ZodError } from 'zod'
+import path from 'path'
 
 import prismaPlugin from './plugins/prisma.js'
 import jwtPlugin from './plugins/jwt.js'
@@ -13,6 +16,7 @@ import activityRoutes from './routes/activities.js'
 import clubRoutes from './routes/clubs.js'
 import postRoutes from './routes/posts.js'
 import notificationRoutes from './routes/notifications.js'
+import uploadRoutes from './routes/upload.js'
 
 export function buildApp() {
   const app = Fastify({
@@ -25,13 +29,22 @@ export function buildApp() {
   app.register(helmet, {
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
+  const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173').split(',').map(s => s.trim())
   app.register(cors, {
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
     credentials: true,
   })
   app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
+  })
+
+  // File upload & static serving
+  app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }) // 10 MB max
+  app.register(staticFiles, {
+    root: path.join(process.cwd(), 'uploads'),
+    prefix: '/uploads/',
+    decorateReply: false,
   })
 
   // Plugins
@@ -45,6 +58,7 @@ export function buildApp() {
   app.register(clubRoutes, { prefix: '/v1/clubs' })
   app.register(postRoutes, { prefix: '/v1/clubs' })
   app.register(notificationRoutes, { prefix: '/v1/notifications' })
+  app.register(uploadRoutes, { prefix: '/v1/upload' })
 
   // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))

@@ -1,6 +1,6 @@
 import {
   Activity, Club, Notification, NotificationType,
-  Level, RegistrationMode, ActivityStatus, PostType, User, Post,
+  Level, RegistrationMode, ActivityStatus, PostType, User, Post, CommentItem, ClubMember,
 } from '../types';
 
 const API_BASE = 'http://localhost:3000/v1';
@@ -307,11 +307,107 @@ export async function apiCreatePost(
   return { ...mapPost(res), isLiked: false };
 }
 
+export async function apiDeletePost(clubId: string, postId: string): Promise<void> {
+  await apiFetch(`/clubs/${clubId}/posts/${postId}`, { method: 'DELETE' });
+}
+
+export async function apiUploadFile(file: File): Promise<string> {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/upload`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message ?? '上傳失敗');
+  return data.url as string;
+}
+
+export async function apiUpdatePost(clubId: string, postId: string, content: string): Promise<Post> {
+  const res = await apiFetch<any>(`/clubs/${clubId}/posts/${postId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ content }),
+  });
+  return mapPost(res);
+}
+
 export async function apiTogglePostLike(
   clubId: string,
   postId: string
 ): Promise<{ isLiked: boolean; likes: number }> {
   return apiFetch(`/clubs/${clubId}/posts/${postId}/like`, { method: 'POST' });
+}
+
+// ── Comments ──────────────────────────────────────────────────────
+function mapComment(c: any): CommentItem {
+  return {
+    id: c.id,
+    postId: c.postId,
+    parentId: c.parentId ?? null,
+    author: {
+      id: c.author.id,
+      name: c.author.name,
+      avatar: c.author.avatar ?? 'https://picsum.photos/id/64/200/200',
+    },
+    content: c.content,
+    createdAt: c.createdAt,
+    replies: c.replies ? c.replies.map(mapComment) : undefined,
+  };
+}
+
+export async function apiGetPostComments(
+  clubId: string,
+  postId: string,
+): Promise<CommentItem[]> {
+  const res = await apiFetch<any>(`/clubs/${clubId}/posts/${postId}/comments?limit=50`);
+  return res.data.map(mapComment);
+}
+
+export async function apiCreateComment(
+  clubId: string,
+  postId: string,
+  content: string,
+  parentId?: string,
+): Promise<CommentItem> {
+  const res = await apiFetch<any>(`/clubs/${clubId}/posts/${postId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ content, ...(parentId ? { parentId } : {}) }),
+  });
+  return mapComment(res);
+}
+
+export async function apiDeleteComment(
+  clubId: string,
+  postId: string,
+  commentId: string,
+): Promise<void> {
+  await apiFetch(`/clubs/${clubId}/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
+}
+
+// ── Club management ────────────────────────────────────────────────
+export async function apiUpdateClub(id: string, data: {
+  name?: string;
+  description?: string;
+  tags?: string[];
+  city?: string;
+  logo?: string;
+}): Promise<Club> {
+  const res = await apiFetch<any>(`/clubs/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return mapClub(res);
+}
+
+export async function apiGetClubMembers(clubId: string): Promise<ClubMember[]> {
+  const res = await apiFetch<any>(`/clubs/${clubId}/members`);
+  return res.data as ClubMember[];
+}
+
+export async function apiRemoveClubMember(clubId: string, memberId: string): Promise<void> {
+  await apiFetch(`/clubs/${clubId}/members/${memberId}`, { method: 'DELETE' });
 }
 
 // ── Notifications ─────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SPORTS_HIERARCHY } from '../constants';
 import { Activity, Club, FilterState, DEFAULT_FILTER_STATE, Notification, NotificationType, User } from '../types';
@@ -119,8 +119,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Toast State
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const toastCounter = useRef(0);
   const addToast = (message: string, type: ToastItem['type'] = 'success') => {
-    const id = Date.now().toString();
+    const id = `toast-${++toastCounter.current}`;
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   };

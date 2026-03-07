@@ -168,6 +168,29 @@ const clubRoutes: FastifyPluginAsync = async (fastify) => {
     reply.send({ message: '已退出社團', membersCount })
   })
 
+  // DELETE /clubs/:id/members/:memberId  (管理員移除成員)
+  fastify.delete('/:id/members/:memberId', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const { id: clubId, memberId } = request.params as { id: string; memberId: string }
+
+    const isAdmin = await fastify.prisma.clubAdmin.findUnique({
+      where: { userId_clubId: { userId, clubId } },
+    })
+    if (!isAdmin) return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: '只有管理員可以移除成員' })
+
+    if (memberId === userId) {
+      return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: '不能移除自己' })
+    }
+
+    const membership = await fastify.prisma.clubMember.findUnique({
+      where: { userId_clubId: { userId: memberId, clubId } },
+    })
+    if (!membership) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '成員不存在' })
+
+    await fastify.prisma.clubMember.delete({ where: { userId_clubId: { userId: memberId, clubId } } })
+    reply.status(204).send()
+  })
+
   // GET /clubs/:id/activities
   fastify.get('/:id/activities', async (request, reply) => {
     const { id: clubId } = request.params as { id: string }

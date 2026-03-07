@@ -7,7 +7,11 @@
       "Bash(docker run -d --name gogosports-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=gogosports -p 5432:5432 postgres:16)",
       "Bash(\"/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe\" run -d --name gogosports-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=gogosports -p 5432:5432 postgres:16)",
       "Bash(npx prisma db seed)",
-      "Bash(npm run db:seed)"
+      "Bash(npm run db:seed)",
+      "Bash(npx tsc --noEmit --exclude backend)",
+      "Bash(npx prisma generate)",
+      "Bash(npm install @fastify/static --save)",
+      "Bash(node -e \"require\\(''dotenv''\\).config\\(\\); console.log\\(''PORT:'', process.env.PORT\\)\")"
     ]
   }
 }

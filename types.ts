@@ -106,6 +106,28 @@ export interface User {
   managedClubIds: string[];
 }
 
+export interface CommentItem {
+  id: string;
+  postId: string;
+  parentId?: string | null;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+  content: string;
+  createdAt: string;
+  replies?: CommentItem[];
+}
+
+export interface ClubMember {
+  id: string;
+  name: string;
+  avatar: string;
+  email: string;
+  joinedAt: string;
+}
+
 export interface Post {
   id: string;
   clubId: string;

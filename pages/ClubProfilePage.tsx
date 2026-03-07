@@ -63,6 +63,7 @@ const ClubProfilePage: React.FC = () => {
       onJoinClub={handleJoinClub}
       onLeaveClub={handleLeaveClub}
       onToast={addToast}
+      onClubUpdated={updated => setFetchedClub(updated)}
     />
   );
 };
