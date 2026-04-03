@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SPORTS_HIERARCHY } from '../constants';
-import { Activity, Club, FilterState, DEFAULT_FILTER_STATE, Notification, NotificationType, User } from '../types';
+import { Activity, Club, FilterState, DEFAULT_FILTER_STATE, Notification, NotificationType, User, ExploreTag, DEFAULT_EXPLORE_TAGS } from '../types';
 import { ToastItem } from '../components/Toast';
 import {
   getToken, clearTokens,
@@ -9,8 +9,24 @@ import {
   apiGetActivities, apiRegisterActivity, apiCancelRegistration, apiCreateActivity,
   apiGetClubs, apiJoinClub, apiLeaveClub, apiCreateClub,
   apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead,
-  apiUpdateProfile,
+  apiUpdateProfile, apiGetExploreTags, apiSaveExploreTags,
 } from '../services/api';
+
+const EXPLORE_TAGS_KEY = 'gogo_explore_tags';
+
+function loadExploreTagsFromStorage(): ExploreTag[] {
+  try {
+    const stored = localStorage.getItem(EXPLORE_TAGS_KEY);
+    if (!stored) return DEFAULT_EXPLORE_TAGS;
+    const parsed: ExploreTag[] = JSON.parse(stored);
+    // Merge: ensure any new default system tags are included
+    const storedIds = new Set(parsed.map(t => t.id));
+    const newDefaults = DEFAULT_EXPLORE_TAGS.filter(t => !storedIds.has(t.id));
+    return [...parsed, ...newDefaults];
+  } catch {
+    return DEFAULT_EXPLORE_TAGS;
+  }
+}
 
 const GUEST_USER: User = {
   id: '',
@@ -74,9 +90,16 @@ interface AppContextType {
   homeSubCategories: string[];
   setHomeMainCategories: (cats: string[]) => void;
   setHomeSubCategories: (cats: string[]) => void;
+  setHomeLocations: (locs: string[]) => void;
   toggleHomeLocation: (loc: string) => void;
   toggleHomeMainCategory: (name: string) => void;
   toggleHomeSubCategory: (name: string) => void;
+
+  // Explore Tags
+  exploreTags: ExploreTag[];
+  saveExploreTags: (tags: ExploreTag[]) => void;
+  isExploreManagerOpen: boolean;
+  setIsExploreManagerOpen: (v: boolean) => void;
 
   // Handlers
   handleActivityClick: (activity: Activity) => void;
@@ -147,6 +170,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<FilterState>(DEFAULT_FILTER_STATE);
 
+  // Explore Tags
+  const [exploreTags, setExploreTags] = useState<ExploreTag[]>(() => loadExploreTagsFromStorage());
+  const [isExploreManagerOpen, setIsExploreManagerOpen] = useState(false);
+
+  const saveExploreTags = (tags: ExploreTag[]) => {
+    setExploreTags(tags);
+    localStorage.setItem(EXPLORE_TAGS_KEY, JSON.stringify(tags));
+    if (isLoggedIn) {
+      apiSaveExploreTags(tags); // fire-and-forget; backend may not support yet
+    }
+  };
+
   // Home search modals
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -198,6 +233,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch(() => {});
     // Re-load clubs to get isJoined state
     apiGetClubs({ limit: '50' }).then(({ data }) => setClubs(data)).catch(() => {});
+    // Sync explore tags from server (override localStorage with server state)
+    apiGetExploreTags().then(tags => {
+      if (tags && tags.length > 0) {
+        setExploreTags(tags);
+        localStorage.setItem(EXPLORE_TAGS_KEY, JSON.stringify(tags));
+      }
+    });
   };
 
   const handleRegister = async (name: string, email: string, password: string, phone?: string) => {
@@ -425,8 +467,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isMapOpen, setIsMapOpen,
       isCategoryOpen, setIsCategoryOpen,
       homeLocations, homeMainCategories, homeSubCategories,
-      setHomeMainCategories, setHomeSubCategories,
+      setHomeLocations, setHomeMainCategories, setHomeSubCategories,
       toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
+      exploreTags, saveExploreTags, isExploreManagerOpen, setIsExploreManagerOpen,
       handleActivityClick, handleClubClick,
       handleRegistrationConfirm, handleCancelRegistration,
       handleJoinClub, handleLeaveClub,

@@ -1,6 +1,7 @@
 import {
   Activity, Club, Notification, NotificationType,
   Level, RegistrationMode, ActivityStatus, PostType, User, Post, CommentItem, ClubMember,
+  ExploreTag,
 } from '../types';
 
 const API_BASE = 'http://localhost:3000/v1';
@@ -446,6 +447,26 @@ export async function apiUpdateProfile(data: {
     body: JSON.stringify(data),
   });
   return mapUser(u);
+}
+
+// ── Explore Tags (User Preferences) ───────────────────────────────
+export async function apiGetExploreTags(): Promise<ExploreTag[] | null> {
+  try {
+    return await apiFetch<ExploreTag[]>('/users/me/explore-tags');
+  } catch {
+    return null; // Backend endpoint may not exist yet
+  }
+}
+
+export async function apiSaveExploreTags(tags: ExploreTag[]): Promise<void> {
+  try {
+    await apiFetch('/users/me/explore-tags', {
+      method: 'PUT',
+      body: JSON.stringify({ tags }),
+    });
+  } catch {
+    // Fail silently — localStorage is the primary store
+  }
 }
 
 // ── Activity management ────────────────────────────────────────────

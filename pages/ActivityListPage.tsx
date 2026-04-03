@@ -28,6 +28,13 @@ const ActivityListPage: React.FC = () => {
     initialState.subCategories || (initialState.subCategory ? [initialState.subCategory] : [])
   );
 
+  // Apply cities from explore tag state on mount
+  useEffect(() => {
+    if (initialState.cities && initialState.cities.length > 0) {
+      setAdvancedFilters({ ...advancedFilters, cities: initialState.cities });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // API state
   const [apiActivities, setApiActivities] = useState<Activity[]>([]);
   const [apiTotal, setApiTotal] = useState(0);

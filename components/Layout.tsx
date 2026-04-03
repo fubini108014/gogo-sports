@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Bell, Plus, Home, Users, MessageSquare, Compass, Check } from 'lucide-react';
-import { TAIWAN_PATH_DATA, SPORTS_HIERARCHY } from '../constants';
+import { Bell, Plus, Home, Users, MessageSquare, Compass } from 'lucide-react';
+import { SPORTS_HIERARCHY } from '../constants';
 import { useAppContext } from '../context/AppContext';
 import CreateMenuModal from './CreateMenuModal';
 import CreatePostModal from './CreatePostModal';
@@ -12,6 +12,9 @@ import SettingsModal from './SettingsModal';
 import ActivityFilterDrawer from './ActivityFilterDrawer';
 import SportCategoryModal from './SportCategoryModal';
 import AuthModal from './AuthModal';
+import ExploreTagManagerModal from './ExploreTagManagerModal';
+import LocationMapModal from './LocationMapModal';
+import NavItem from './NavItem';
 import Toast from './Toast';
 
 const Layout: React.FC = () => {
@@ -21,20 +24,20 @@ const Layout: React.FC = () => {
     user, clubs, notifications,
     toasts,
     isLoggedIn, isAuthModalOpen, setIsAuthModalOpen,
-    handleLogin, handleLogout, handleRegister,
+    handleLogin, handleRegister,
     selectedActivity, isRegistrationOpen, setIsRegistrationOpen,
     isSettingsOpen, setIsSettingsOpen,
     isFilterOpen, setIsFilterOpen,
     advancedFilters, setAdvancedFilters,
     isMapOpen, setIsMapOpen,
     isCategoryOpen, setIsCategoryOpen,
-    homeLocations, homeMainCategories, homeSubCategories,
-    toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
-    setHomeMainCategories, setHomeSubCategories,
+    homeLocations, homeSubCategories,
+    setHomeLocations, setHomeMainCategories, setHomeSubCategories,
     darkMode, setDarkMode,
     handleRegistrationConfirm,
     handleCreatePost, handleCreateActivity, handleCreateClub,
     addToast,
+    exploreTags, saveExploreTags, isExploreManagerOpen, setIsExploreManagerOpen,
   } = useAppContext();
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -139,25 +142,19 @@ const Layout: React.FC = () => {
           
           {/* Left Items */}
           <div className="flex items-center gap-1">
-            {navItemsLeft.map((item) => {
-              const isActive = location.pathname === item.path;
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                    isActive ? 'text-primary font-bold bg-primary/5' : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                >
-                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="text-sm uppercase tracking-wide font-black">{item.label}</span>
-                </button>
-              );
-            })}
+            {navItemsLeft.map(item => (
+              <NavItem
+                key={item.path}
+                icon={item.icon}
+                label={item.label}
+                isActive={location.pathname === item.path}
+                onClick={() => navigate(item.path)}
+                variant="desktop"
+              />
+            ))}
           </div>
 
-          {/* Center Create Button (Now integrated into dock center) */}
+          {/* Center Create Button */}
           <div className="px-2">
             <button
               onClick={() => setIsCreateMenuOpen(true)}
@@ -170,22 +167,16 @@ const Layout: React.FC = () => {
 
           {/* Right Items */}
           <div className="flex items-center gap-1">
-            {navItemsRight.map((item) => {
-              const isActive = location.pathname === item.path;
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                    isActive ? 'text-primary font-bold bg-primary/5' : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                >
-                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="text-sm uppercase tracking-wide font-black">{item.label}</span>
-                </button>
-              );
-            })}
+            {navItemsRight.map(item => (
+              <NavItem
+                key={item.path}
+                icon={item.icon}
+                label={item.label}
+                isActive={location.pathname === item.path}
+                onClick={() => navigate(item.path)}
+                variant="desktop"
+              />
+            ))}
           </div>
         </nav>
       </div>
@@ -201,22 +192,16 @@ const Layout: React.FC = () => {
           
           {/* Left Items */}
           <div className="flex flex-1 justify-around">
-            {navItemsLeft.map((item) => {
-              const isActive = location.pathname === item.path;
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`flex flex-col items-center gap-1 transition-all ${
-                    isActive ? 'text-primary' : 'text-gray-400 dark:text-gray-500'
-                  }`}
-                >
-                  <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="text-[10px] font-black uppercase tracking-wider">{item.label.substring(0, 2)}</span>
-                </button>
-              );
-            })}
+            {navItemsLeft.map(item => (
+              <NavItem
+                key={item.path}
+                icon={item.icon}
+                label={item.label}
+                isActive={location.pathname === item.path}
+                onClick={() => navigate(item.path)}
+                variant="mobile"
+              />
+            ))}
           </div>
 
           {/* Center Create Button */}
@@ -231,22 +216,16 @@ const Layout: React.FC = () => {
 
           {/* Right Items */}
           <div className="flex flex-1 justify-around">
-            {navItemsRight.map((item) => {
-              const isActive = location.pathname === item.path;
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`flex flex-col items-center gap-1 transition-all ${
-                    isActive ? 'text-primary' : 'text-gray-400 dark:text-gray-500'
-                  }`}
-                >
-                  <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="text-[10px] font-black uppercase tracking-wider">{item.label.substring(0, 2)}</span>
-                </button>
-              );
-            })}
+            {navItemsRight.map(item => (
+              <NavItem
+                key={item.path}
+                icon={item.icon}
+                label={item.label}
+                isActive={location.pathname === item.path}
+                onClick={() => navigate(item.path)}
+                variant="mobile"
+              />
+            ))}
           </div>
 
         </div>
@@ -295,52 +274,12 @@ const Layout: React.FC = () => {
       />
 
       {/* Home Location Modal */}
-      {isMapOpen && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center animate-fade-in">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMapOpen(false)} />
-          <div className="relative z-10 w-full md:w-[700px] bg-white dark:bg-slate-800 rounded-t-[32px] md:rounded-3xl max-h-[85vh] md:max-h-[80vh] flex flex-col shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-slide-up">
-            <div className="flex justify-center pt-3 pb-1 md:hidden flex-shrink-0">
-              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full" />
-            </div>
-            <div className="overflow-y-auto flex-1">
-              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 flex justify-center">
-                  <svg viewBox="0 0 220 520" className="w-full h-full max-h-[280px] md:max-h-[380px]">
-                    {TAIWAN_PATH_DATA.map((item) => {
-                      const isSel = homeLocations.includes(item.id) || homeLocations.includes('全台灣');
-                      return (
-                        <path
-                          key={item.id}
-                          d={item.d}
-                          onClick={() => toggleHomeLocation(item.id)}
-                          className={`cursor-pointer transition-all duration-300 stroke-[1.5] ${isSel ? 'fill-primary stroke-white scale-[1.02]' : 'fill-white dark:fill-slate-700 stroke-slate-200 dark:stroke-slate-600 hover:fill-orange-50'}`}
-                          style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
-                        />
-                      );
-                    })}
-                  </svg>
-                </div>
-                <div className="flex flex-col md:h-[380px]">
-                  <h3 className="font-black text-sm text-slate-900 dark:text-white mb-3 hidden md:block">選擇地區</h3>
-                  <div className="flex-1 overflow-y-auto pr-2 no-scrollbar">
-                    <button onClick={() => toggleHomeLocation('全台灣')} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-bold mb-2 flex justify-between items-center ${homeLocations.includes('全台灣') ? 'bg-primary text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                      全台灣 {homeLocations.includes('全台灣') && <Check size={14} />}
-                    </button>
-                    <div className="grid grid-cols-2 gap-1">
-                      {TAIWAN_PATH_DATA.map(loc => (
-                        <button key={loc.id} onClick={() => toggleHomeLocation(loc.id)} className={`px-3 py-1.5 rounded-lg text-xs font-bold text-left flex justify-between items-center ${homeLocations.includes(loc.id) ? 'bg-orange-50 dark:bg-primary/10 text-primary' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
-                          {loc.id} {homeLocations.includes(loc.id) && <Check size={12} />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <button onClick={() => setIsMapOpen(false)} className="mt-4 w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-xl text-sm">確認選擇</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <LocationMapModal
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        selectedLocations={homeLocations}
+        onSelect={setHomeLocations}
+      />
 
       {/* Home Category Sidebar */}
       <SportCategoryModal
@@ -378,6 +317,13 @@ const Layout: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         darkMode={darkMode}
         onDarkModeToggle={() => setDarkMode(!darkMode)}
+      />
+
+      <ExploreTagManagerModal
+        isOpen={isExploreManagerOpen}
+        onClose={() => setIsExploreManagerOpen(false)}
+        exploreTags={exploreTags}
+        onSave={saveExploreTags}
       />
 
       <Toast toasts={toasts} />
