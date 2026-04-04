@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Users, Settings, Trash2, Crown, Tag } from 'lucide-react';
 import { Club, ClubMember } from '../../types';
 import { apiUpdateClub, apiGetClubMembers, apiRemoveClubMember } from '../../services/api';
+import RankBadge from '../ui/RankBadge';
 
 interface ClubManageModalProps {
   isOpen: boolean;
@@ -183,7 +184,10 @@ const ClubManageModal: React.FC<ClubManageModalProps> = ({ isOpen, onClose, club
                         className="w-10 h-10 rounded-full object-cover bg-gray-200 dark:bg-gray-600"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{member.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{member.name}</p>
+                          <RankBadge rank={member.rank} />
+                        </div>
                         <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{member.email}</p>
                       </div>
                       <button

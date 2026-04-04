@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Club, Activity, Post, PostType, CommentItem } from '../../types';
+import RankBadge from '../ui/RankBadge';
 import { MapPin, Users, Star, Calendar as CalendarIcon, Image as ImageIcon, ChevronRight, PenSquare, Heart, MessageSquare, ArrowUpDown, ChevronLeft, MoreHorizontal, Send, X, CornerDownRight, AlertTriangle, Edit2 } from 'lucide-react';
 import CreatePostModal from '../modals/CreatePostModal';
 import ClubManageModal from '../modals/ClubManageModal';
@@ -287,9 +288,10 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
                    <div className="flex gap-3">
                      <img src={post.author.avatar} alt={post.author.name} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 object-cover ring-2 ring-white dark:ring-gray-800 shadow-sm" />
                      <div>
-                       <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-1.5">
                          <span className="font-bold text-gray-900 dark:text-white text-sm">{post.author.name}</span>
                          {post.author.isAdmin && <span className="text-[10px] bg-gray-900 dark:bg-gray-600 text-white px-1.5 py-0.5 rounded font-bold">Admin</span>}
+                         {post.author.rank && <RankBadge rank={post.author.rank} variant="icon" />}
                        </div>
                        <span className="text-xs text-gray-400 dark:text-gray-500 block mt-0.5">
                          {new Date(post.createdAt).toLocaleDateString()}

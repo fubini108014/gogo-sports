@@ -167,12 +167,35 @@ export interface CommentItem {
   replies?: CommentItem[];
 }
 
+export enum ClubMemberRank {
+  NEWBIE  = 'NEWBIE',   // 新手 🌱  0–2
+  REGULAR = 'REGULAR',  // 熟手 ⚡  3–9
+  VETERAN = 'VETERAN',  // 老手 🔥  10–19
+  VIP     = 'VIP',      // VIP 👑   20+
+}
+
+export const CLUB_MEMBER_RANK_META: Record<ClubMemberRank, { label: string; icon: string; color: string }> = {
+  [ClubMemberRank.NEWBIE]:  { label: '新手', icon: '🌱', color: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
+  [ClubMemberRank.REGULAR]: { label: '熟手', icon: '⚡', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  [ClubMemberRank.VETERAN]: { label: '老手', icon: '🔥', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' },
+  [ClubMemberRank.VIP]:     { label: 'VIP',  icon: '👑', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' },
+};
+
+export function calcClubMemberRank(activityCount: number): ClubMemberRank {
+  if (activityCount >= 20) return ClubMemberRank.VIP;
+  if (activityCount >= 10) return ClubMemberRank.VETERAN;
+  if (activityCount >= 3)  return ClubMemberRank.REGULAR;
+  return ClubMemberRank.NEWBIE;
+}
+
 export interface ClubMember {
   id: string;
   name: string;
   avatar: string;
   email: string;
   joinedAt: string;
+  activityCount: number;
+  rank: ClubMemberRank;
 }
 
 export interface Post {
@@ -183,6 +206,7 @@ export interface Post {
     name: string;
     avatar: string;
     isAdmin: boolean;
+    rank?: ClubMemberRank;
   };
   type: PostType;
   content: string;

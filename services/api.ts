@@ -1,7 +1,7 @@
 import {
   Activity, Club, Notification, NotificationType,
   Level, RegistrationMode, ActivityStatus, PostType, User, Post, CommentItem, ClubMember,
-  ExploreTag,
+  ExploreTag, calcClubMemberRank,
 } from '../types';
 
 const API_BASE = 'http://localhost:3000/v1';
@@ -136,7 +136,15 @@ function mapNotification(n: any): Notification {
   };
 }
 
+// Deterministic mock activityCount from an id string (avoids re-randomising on each render)
+function mockActivityCount(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % 28; // 0–27, covers all four tiers
+}
+
 function mapPost(p: any): Post {
+  const activityCount = p.author.activityCount ?? mockActivityCount(p.author.id);
   return {
     id: p.id,
     clubId: p.clubId,
@@ -145,6 +153,7 @@ function mapPost(p: any): Post {
       name: p.author.name,
       avatar: p.author.avatar ?? 'https://picsum.photos/id/64/200/200',
       isAdmin: p.author.isAdmin ?? false,
+      rank: p.author.rank ?? calcClubMemberRank(activityCount),
     },
     type: POST_TYPE_MAP[p.type] ?? PostType.SHARE,
     content: p.content,
@@ -404,7 +413,14 @@ export async function apiUpdateClub(id: string, data: {
 
 export async function apiGetClubMembers(clubId: string): Promise<ClubMember[]> {
   const res = await apiFetch<any>(`/clubs/${clubId}/members`);
-  return res.data as ClubMember[];
+  return (res.data as any[]).map((m) => {
+    const activityCount = m.activityCount ?? mockActivityCount(m.id);
+    return {
+      ...m,
+      activityCount,
+      rank: m.rank ?? calcClubMemberRank(activityCount),
+    } as ClubMember;
+  });
 }
 
 export async function apiRemoveClubMember(clubId: string, memberId: string): Promise<void> {
