@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import ActivityDetail from '../components/ActivityDetail';
-import ActivityMap from '../components/ActivityMap';
+import ActivityDetail from '../components/activity/ActivityDetail';
+import ActivityMap from '../components/activity/ActivityMap';
 import { Activity } from '../types';
 import { apiGetActivity } from '../services/api';
 

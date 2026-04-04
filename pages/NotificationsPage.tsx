@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import NotificationList from '../components/NotificationList';
+import NotificationList from '../components/user/NotificationList';
 
 const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();

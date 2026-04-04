@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, RotateCcw } from 'lucide-react';
-import { Level } from '../types';
+import { Level } from '../../types';
 
 interface FilterState {
   cities: string[];

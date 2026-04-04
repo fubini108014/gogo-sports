@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RegistrationMode, Level, ActivityStatus, Club } from '../types';
+import { RegistrationMode, Level, ActivityStatus, Club } from '../../types';
 import { X, Calendar, MapPin, DollarSign, Users, Target, Info, ChevronRight, CheckCircle } from 'lucide-react';
 
 interface CreateActivityModalProps {

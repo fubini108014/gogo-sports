@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Upload, CheckCircle } from 'lucide-react';
-import { SPORTS_HIERARCHY } from '../constants';
+import { SPORTS_HIERARCHY } from '../../constants';
 
 interface CreateClubModalProps {
   isOpen: boolean;

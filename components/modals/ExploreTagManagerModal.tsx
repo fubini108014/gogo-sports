@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Menu, Lock, Pencil, ChevronRight } from 'lucide-react';
+import { X, Plus, Trash2, Menu, Pencil, ChevronRight } from 'lucide-react';
+import ExploreTagCard from '../ui/ExploreTagCard';
 import {
   DndContext, closestCenter,
   PointerSensor, TouchSensor, useSensor, useSensors,
@@ -11,8 +12,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   ExploreTag, ExploreColorKey, EXPLORE_COLOR_MAP, ExploreTagFilters,
-} from '../types';
-import { SPORTS_HIERARCHY, TAIWAN_CITIES } from '../constants';
+} from '../../types';
+import { SPORTS_HIERARCHY, TAIWAN_CITIES } from '../../constants';
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -125,7 +126,6 @@ function SortableTagRow({ tag, onEdit, onToggle }: TagRowProps) {
       <span className="text-lg w-7 text-center flex-shrink-0">{tag.icon}</span>
       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.dot}`} />
       <span className="flex-1 text-sm font-bold text-slate-700 dark:text-slate-200 truncate min-w-0">{tag.label}</span>
-      {tag.isSystem && <Lock size={10} className="text-slate-300 dark:text-slate-600 flex-shrink-0" />}
       {!tag.isSystem && (
         <button
           onClick={() => onEdit(tag)}
@@ -155,6 +155,7 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [expandedSportCat, setExpandedSportCat] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -167,6 +168,7 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
       setView('list');
       setExpandedSportCat(null);
       setConfirmDelete(false);
+      setShowHidden(false);
     }
   }, [isOpen, exploreTags]);
 
@@ -267,8 +269,6 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
 
   // ── Render ────────────────────────────────────────────────────────
 
-  const colors = EXPLORE_COLOR_MAP[form.colorKey];
-
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -292,21 +292,6 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
           </button>
         </div>
 
-        {/* ── Sticky Preview (create/edit only) ── */}
-        {(view === 'create' || view === 'edit') && (
-          <div className="flex-shrink-0 px-5 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">預覽</p>
-            <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-2xl border ${colors.card}`}>
-              <span className="text-xl">{form.icon}</span>
-              <div className="flex flex-col">
-                <span className="text-xs font-black whitespace-nowrap">{form.label || '標籤名稱'}</span>
-                {filterSummary(form) !== '全部活動' && (
-                  <span className="text-[10px] opacity-60 mt-0.5">{filterSummary(form)}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── Scrollable Content ── */}
         <div className="flex-1 overflow-y-auto">
@@ -321,6 +306,13 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
                 <Plus size={15} /> 新增自訂標籤
               </button>
 
+              {localTags.some(t => !t.enabled) && (
+                <div className="flex items-center justify-between px-1 py-1">
+                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500">顯示已隱藏標籤</span>
+                  <Toggle on={showHidden} onChange={() => setShowHidden(v => !v)} />
+                </div>
+              )}
+
               {localTags.length === 0 && (
                 <div className="text-center py-10 text-slate-400">
                   <p className="text-3xl mb-2">🏷️</p>
@@ -328,20 +320,25 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
                 </div>
               )}
 
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-                autoScroll={false}
-              >
-                <SortableContext items={localTags.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-2">
-                    {localTags.map(tag => (
-                      <SortableTagRow key={tag.id} tag={tag} onEdit={openEdit} onToggle={toggleEnabled} />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
+              {(() => {
+                const displayTags = showHidden ? localTags : localTags.filter(t => t.enabled);
+                return (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                    autoScroll={false}
+                  >
+                    <SortableContext items={displayTags.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-2">
+                        {displayTags.map(tag => (
+                          <SortableTagRow key={tag.id} tag={tag} onEdit={openEdit} onToggle={toggleEnabled} />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                );
+              })()}
             </div>
           )}
 
@@ -367,32 +364,43 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
                 </div>
               </div>
 
-              {/* Label */}
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2">標籤名稱</label>
-                <input
-                  type="text"
-                  value={form.label}
-                  onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
-                  placeholder="例如：台北早晨羽球"
-                  maxLength={10}
-                  className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary"
+              {/* Preview + Label + Color — 左右並排 */}
+              <div className="flex gap-4 items-start">
+                {/* 預覽卡片 */}
+                <ExploreTagCard
+                  icon={form.icon}
+                  label={form.label || '標籤名稱'}
+                  colorKey={form.colorKey}
+                  subtitle={filterSummary(form) !== '全部活動' ? filterSummary(form) : undefined}
                 />
-              </div>
 
-              {/* Color */}
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2">顏色</label>
-                <div className="flex gap-2 flex-wrap">
-                  {COLOR_KEYS.map(key => (
-                    <button
-                      key={key}
-                      onClick={() => setForm(f => ({ ...f, colorKey: key }))}
-                      className={`w-8 h-8 rounded-full ${EXPLORE_COLOR_MAP[key].dot} transition-transform hover:scale-110 ${
-                        form.colorKey === key ? 'ring-2 ring-offset-2 dark:ring-offset-slate-900 ring-slate-500 scale-110' : ''
-                      }`}
+                {/* 名稱 + 顏色（上下排列） */}
+                <div className="flex-1 flex flex-col gap-3 justify-center">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">標籤名稱</label>
+                    <input
+                      type="text"
+                      value={form.label}
+                      onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
+                      placeholder="例如：台北早晨羽球"
+                      maxLength={10}
+                      className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
-                  ))}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">顏色</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {COLOR_KEYS.map(key => (
+                        <button
+                          key={key}
+                          onClick={() => setForm(f => ({ ...f, colorKey: key }))}
+                          className={`w-7 h-7 rounded-full ${EXPLORE_COLOR_MAP[key].dot} transition-transform hover:scale-110 ${
+                            form.colorKey === key ? 'ring-2 ring-offset-2 dark:ring-offset-slate-900 ring-slate-500 scale-110' : ''
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 

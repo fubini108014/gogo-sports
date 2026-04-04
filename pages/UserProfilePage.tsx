@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import UserProfile from '../components/UserProfile';
+import UserProfile from '../components/user/UserProfile';
 
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();

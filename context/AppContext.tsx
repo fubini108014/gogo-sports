@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { useNavigate } from 'react-router-dom';
 import { SPORTS_HIERARCHY } from '../constants';
 import { Activity, Club, FilterState, DEFAULT_FILTER_STATE, Notification, NotificationType, User, ExploreTag, DEFAULT_EXPLORE_TAGS } from '../types';
-import { ToastItem } from '../components/Toast';
+import { ToastItem } from '../components/ui/Toast';
 import {
   getToken, clearTokens,
   apiLogin, apiRegister, apiLogout, apiGetMe,

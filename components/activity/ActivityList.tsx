@@ -1,9 +1,9 @@
 import React from 'react';
-import { Activity } from '../types';
+import { Activity } from '../../types';
 import ActivityCard from './ActivityCard';
-import { ActivityCardSkeleton } from './Skeleton';
-import { useSkeletonLoading } from '../hooks/useSkeletonLoading';
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+import { ActivityCardSkeleton } from '../ui/Skeleton';
+import { useSkeletonLoading } from '../../hooks/useSkeletonLoading';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { Filter, Loader2 } from 'lucide-react';
 
 interface ActivityListProps {

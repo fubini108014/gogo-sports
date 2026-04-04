@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import SportCategoryPicker from './SportCategoryPicker';
+import SportCategoryPicker from '../home/SportCategoryPicker';
 
 interface SportCategoryModalProps {
   isOpen: boolean;

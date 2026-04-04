@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, RegistrationMode, ActivityStatus } from '../types';
+import { Activity, RegistrationMode, ActivityStatus } from '../../types';
 import { MapPin, Calendar, User, Zap } from 'lucide-react';
 
 interface ActivityCardProps {

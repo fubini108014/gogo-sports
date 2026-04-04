@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Club } from '../types';
-import { SPORTS_HIERARCHY } from '../constants';
-import { ClubCardSkeleton } from './Skeleton';
-import CategorySelector from './CategorySelector';
+import { Club } from '../../types';
+import { SPORTS_HIERARCHY } from '../../constants';
+import { ClubCardSkeleton } from '../ui/Skeleton';
+import CategorySelector from '../home/CategorySelector';
 import { Search, ChevronLeft, Users, Star, Filter, ArrowUpDown, XCircle, Loader2 } from 'lucide-react';
 
 interface ClubListProps {

@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExploreTag, EXPLORE_COLOR_MAP } from '../types';
+import { ExploreTag } from '../../types';
 import { Settings2 } from 'lucide-react';
+import ExploreTagCard from '../ui/ExploreTagCard';
 
 interface ExploreTagsSectionProps {
   tags: ExploreTag[];
@@ -36,14 +37,13 @@ const ExploreTagsSection: React.FC<ExploreTagsSectionProps> = ({ tags, onManage 
       ) : (
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
           {activeTags.map(tag => (
-            <button
+            <ExploreTagCard
               key={tag.id}
+              icon={tag.icon}
+              label={tag.label}
+              colorKey={tag.colorKey}
               onClick={() => navigate('/activities', { state: tag.filters })}
-              className={`flex-shrink-0 px-5 py-3 rounded-2xl border flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${EXPLORE_COLOR_MAP[tag.colorKey].card}`}
-            >
-              <span className="text-xl">{tag.icon}</span>
-              <span className="text-xs font-black whitespace-nowrap">{tag.label}</span>
-            </button>
+            />
           ))}
         </div>
       )}

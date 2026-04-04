@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SPORTS_HIERARCHY } from '../constants';
+import { SPORTS_HIERARCHY } from '../../constants';
 import { Check, Search, ChevronRight } from 'lucide-react';
 
 interface SportCategoryPickerProps {

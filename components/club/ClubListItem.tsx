@@ -1,5 +1,5 @@
 import React from 'react';
-import { Club } from '../types';
+import { Club } from '../../types';
 import { ChevronRight, ShieldCheck } from 'lucide-react';
 
 interface ClubListItemProps {

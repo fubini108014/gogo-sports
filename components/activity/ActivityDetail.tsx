@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Club, RegistrationMode, ActivityStatus } from '../types';
+import { Activity, Club, RegistrationMode, ActivityStatus } from '../../types';
 import { ChevronLeft, MapPin, Calendar, Clock, DollarSign, Users, Zap, CheckCircle, Tag } from 'lucide-react';
 
 interface ActivityDetailProps {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Users, Settings, Trash2, Crown, Tag } from 'lucide-react';
-import { Club, ClubMember } from '../types';
-import { apiUpdateClub, apiGetClubMembers, apiRemoveClubMember } from '../services/api';
+import { Club, ClubMember } from '../../types';
+import { apiUpdateClub, apiGetClubMembers, apiRemoveClubMember } from '../../services/api';
 
 interface ClubManageModalProps {
   isOpen: boolean;

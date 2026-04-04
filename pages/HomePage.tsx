@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import ActivityCard from '../components/ActivityCard';
-import HomeSearchBar from '../components/HomeSearchBar';
-import HomeSelectedTags from '../components/HomeSelectedTags';
-import ExploreTagsSection from '../components/ExploreTagsSection';
+import ActivityCard from '../components/activity/ActivityCard';
+import HomeSearchBar from '../components/home/HomeSearchBar';
+import HomeSelectedTags from '../components/home/HomeSelectedTags';
+import ExploreTagsSection from '../components/home/ExploreTagsSection';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();

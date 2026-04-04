@@ -1,5 +1,5 @@
 import React from 'react';
-import { Notification, NotificationType } from '../types';
+import { Notification, NotificationType } from '../../types';
 import { Bell, ChevronLeft, CheckCheck, Info, MessageCircle, Calendar, UserPlus } from 'lucide-react';
 
 interface NotificationListProps {

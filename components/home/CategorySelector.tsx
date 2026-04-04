@@ -1,5 +1,5 @@
 import React from 'react';
-import { SPORTS_HIERARCHY } from '../constants';
+import { SPORTS_HIERARCHY } from '../../constants';
 import { X } from 'lucide-react';
 
 interface CategorySelectorProps {

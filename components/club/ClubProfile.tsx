@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Club, Activity, Post, PostType, CommentItem } from '../types';
+import { Club, Activity, Post, PostType, CommentItem } from '../../types';
 import { MapPin, Users, Star, Calendar as CalendarIcon, Image as ImageIcon, ChevronRight, PenSquare, Heart, MessageSquare, ArrowUpDown, ChevronLeft, MoreHorizontal, Send, X, CornerDownRight, AlertTriangle, Edit2 } from 'lucide-react';
-import CreatePostModal from './CreatePostModal';
-import ClubManageModal from './ClubManageModal';
-import { useAppContext } from '../context/AppContext';
-import { apiGetClubPosts, apiTogglePostLike, apiCreatePost, apiDeletePost, apiUpdatePost, apiGetPostComments, apiCreateComment, apiDeleteComment } from '../services/api';
+import CreatePostModal from '../modals/CreatePostModal';
+import ClubManageModal from '../modals/ClubManageModal';
+import { useAppContext } from '../../context/AppContext';
+import { apiGetClubPosts, apiTogglePostLike, apiCreatePost, apiDeletePost, apiUpdatePost, apiGetPostComments, apiCreateComment, apiDeleteComment } from '../../services/api';
 
 interface ClubProfileProps {
   club: Club;

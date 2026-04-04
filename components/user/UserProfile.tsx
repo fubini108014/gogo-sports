@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { User, Activity, Club } from '../types';
-import ActivityCard from './ActivityCard';
+import { User, Activity, Club } from '../../types';
+import ActivityCard from '../activity/ActivityCard';
 import ProfileCard from './ProfileCard';
-import ClubListItem from './ClubListItem';
+import ClubListItem from '../club/ClubListItem';
 import { ChevronLeft, Settings, Users, ShieldCheck, XCircle, LogOut } from 'lucide-react';
 
 interface UserProfileProps {

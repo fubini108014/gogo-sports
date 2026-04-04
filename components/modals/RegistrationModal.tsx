@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, RegistrationMode, ActivityStatus } from '../types';
+import { Activity, RegistrationMode, ActivityStatus } from '../../types';
 import { X, CheckCircle, Car, AlertCircle, Info, ChevronRight, User as UserIcon } from 'lucide-react';
 
 interface RegistrationModalProps {

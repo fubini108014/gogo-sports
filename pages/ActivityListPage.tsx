@@ -4,9 +4,9 @@ import { useAppContext } from '../context/AppContext';
 import { SPORTS_HIERARCHY } from '../constants';
 import { Activity, DEFAULT_FILTER_STATE } from '../types';
 import { apiGetActivities, LEVEL_REVERSE } from '../services/api';
-import ActivityList from '../components/ActivityList';
-import ActivityMap from '../components/ActivityMap';
-import CategorySelector from '../components/CategorySelector';
+import ActivityList from '../components/activity/ActivityList';
+import ActivityMap from '../components/activity/ActivityMap';
+import CategorySelector from '../components/home/CategorySelector';
 import { Search, ChevronLeft, Filter, List as ListIcon, Map as MapIcon, X } from 'lucide-react';
 
 const ActivityListPage: React.FC = () => {

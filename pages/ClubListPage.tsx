@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import ClubList from '../components/ClubList';
+import ClubList from '../components/club/ClubList';
 
 const ClubListPage: React.FC = () => {
   const navigate = useNavigate();

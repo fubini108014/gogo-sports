@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Image, Paperclip, Send, Smile, XCircle, Loader2 } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
-import { apiUploadFile } from '../services/api';
+import { useAppContext } from '../../context/AppContext';
+import { apiUploadFile } from '../../services/api';
 
 const EMOJI_LIST = [
   '😀','😂','🥰','😎','🤔','👍','👏','🙌','🎉','🔥',

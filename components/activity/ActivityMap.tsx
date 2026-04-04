@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Activity } from '../types';
+import { Activity } from '../../types';
 
 // Fix Leaflet default icon path issue with bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;

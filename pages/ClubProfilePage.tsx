@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import ClubProfile from '../components/ClubProfile';
+import ClubProfile from '../components/club/ClubProfile';
 import { Club } from '../types';
 import { apiGetClub } from '../services/api';
 
