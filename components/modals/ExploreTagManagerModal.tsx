@@ -14,6 +14,7 @@ import {
   ExploreTag, ExploreColorKey, EXPLORE_COLOR_MAP, ExploreTagFilters, Level,
 } from '../../types';
 import { SPORTS_HIERARCHY, TAIWAN_CITIES } from '../../constants';
+import RangeSlider from '../ui/RangeSlider';
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -553,23 +554,20 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
                   {/* 費用範圍 */}
                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
                     <span className="text-xs font-black text-slate-600 dark:text-slate-300 block mb-3">💰 費用範圍 (TWD)</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        placeholder="最低"
-                        value={form.minPrice}
-                        onChange={e => setForm(f => ({ ...f, minPrice: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                      <span className="text-slate-300">—</span>
-                      <input
-                        type="number"
-                        placeholder="最高"
-                        value={form.maxPrice}
-                        onChange={e => setForm(f => ({ ...f, maxPrice: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                    </div>
+                    <RangeSlider 
+                      min={0}
+                      max={2000}
+                      step={50}
+                      minVal={form.minPrice === '' ? 0 : parseInt(form.minPrice)}
+                      maxVal={form.maxPrice === '' ? 2000 : parseInt(form.maxPrice)}
+                      onChange={({ min, max }) => {
+                        setForm({ 
+                          ...form, 
+                          minPrice: min === 0 ? '' : min.toString(), 
+                          maxPrice: max === 2000 ? '' : max.toString() 
+                        });
+                      }}
+                    />
                   </div>
 
                   {/* 關鍵字 */}

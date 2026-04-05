@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, RotateCcw } from 'lucide-react';
 import { Level } from '../../types';
+import RangeSlider from '../ui/RangeSlider';
 
 interface FilterState {
   cities: string[];
@@ -203,28 +204,21 @@ const ActivityFilterPanel: React.FC<ActivityFilterPanelProps> = ({ isOpen, onClo
           {/* Price Range */}
           <div className="space-y-3">
               <label className="block text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">費用預算 (TWD)</label>
-              <div className="flex items-center gap-3">
-                 <div className="relative flex-1">
-                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">$</span>
-                   <input
-                     type="number"
-                     placeholder="最低"
-                     value={filters.minPrice}
-                     onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
-                     className="w-full p-4 md:p-2.5 pl-8 md:pl-6 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-bold dark:text-white"
-                   />
-                 </div>
-                 <div className="w-2 h-[1px] bg-gray-300 dark:bg-gray-600"></div>
-                 <div className="relative flex-1">
-                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">$</span>
-                   <input
-                     type="number"
-                     placeholder="最高"
-                     value={filters.maxPrice}
-                     onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-                     className="w-full p-4 md:p-2.5 pl-8 md:pl-6 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-bold dark:text-white"
-                   />
-                 </div>
+              <div className="pt-2">
+                <RangeSlider 
+                  min={0}
+                  max={2000}
+                  step={50}
+                  minVal={filters.minPrice === '' ? 0 : parseInt(filters.minPrice)}
+                  maxVal={filters.maxPrice === '' ? 2000 : parseInt(filters.maxPrice)}
+                  onChange={({ min, max }) => {
+                    setFilters({ 
+                      ...filters, 
+                      minPrice: min === 0 ? '' : min.toString(), 
+                      maxPrice: max === 2000 ? '' : max.toString() 
+                    });
+                  }}
+                />
               </div>
           </div>
 

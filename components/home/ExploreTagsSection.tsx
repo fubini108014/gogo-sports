@@ -42,7 +42,19 @@ const ExploreTagsSection: React.FC<ExploreTagsSectionProps> = ({ tags, onManage 
               icon={tag.icon}
               label={tag.label}
               colorKey={tag.colorKey}
-              onClick={() => navigate('/activities', { state: tag.filters })}
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (tag.filters.searchTerm) params.set('search', tag.filters.searchTerm);
+                if (tag.filters.cities?.length) params.set('cities', tag.filters.cities.join(','));
+                if (tag.filters.mainCategories?.length) params.set('mainCategories', tag.filters.mainCategories.join(','));
+                if (tag.filters.subCategories?.length) params.set('subCategories', tag.filters.subCategories.join(','));
+                if (tag.filters.levels?.length) params.set('levels', tag.filters.levels.join(','));
+                if (tag.filters.isNearlyFull) params.set('isNearlyFull', 'true');
+                if (tag.filters.minPrice !== undefined) params.set('minPrice', String(tag.filters.minPrice));
+                if (tag.filters.maxPrice !== undefined) params.set('maxPrice', String(tag.filters.maxPrice));
+                
+                navigate(`/activities?${params.toString()}`);
+              }}
             />
           ))}
         </div>

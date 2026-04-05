@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { SPORTS_HIERARCHY } from '../constants';
 import { Activity, DEFAULT_FILTER_STATE } from '../types';
@@ -12,6 +12,7 @@ import { Search, ChevronLeft, Filter, List as ListIcon, Map as MapIcon, X, Rotat
 const ActivityListPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { handleActivityClick, isFilterOpen, setIsFilterOpen, advancedFilters, setAdvancedFilters } = useAppContext();
   const initialState = location.state || {};
 
@@ -19,49 +20,102 @@ const ActivityListPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   // Filter States
-  const [searchTerm, setSearchTerm] = useState(initialState.searchTerm || '');
-  const [confirmedSearch, setConfirmedSearch] = useState(searchTerm);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [confirmedSearch, setConfirmedSearch] = useState('');
 
-  // Apply initial states from navigation on mount
+  // Apply initial states from navigation or query string on mount
   useEffect(() => {
     let newFilters = { ...advancedFilters };
     let changed = false;
 
-    if (initialState.cities && initialState.cities.length > 0) {
+    // Helper to get array from query string
+    const getArrayParam = (key: string) => {
+      const val = searchParams.get(key);
+      return val ? val.split(',') : null;
+    };
+
+    // 1. Search Term
+    const qSearch = searchParams.get('search');
+    if (qSearch) {
+      setSearchTerm(qSearch);
+      setConfirmedSearch(qSearch);
+    } else if (initialState.searchTerm) {
+      setSearchTerm(initialState.searchTerm);
+      setConfirmedSearch(initialState.searchTerm);
+    }
+
+    // 2. Cities / Locations
+    const qCities = getArrayParam('cities');
+    if (qCities && qCities.length > 0) {
+      newFilters.cities = qCities;
+      changed = true;
+    } else if (initialState.cities && initialState.cities.length > 0) {
       newFilters.cities = initialState.cities;
       changed = true;
-    }
-    if (initialState.mainCategory) {
-      newFilters.mainCategories = [initialState.mainCategory];
-      changed = true;
-    }
-    if (initialState.mainCategories && initialState.mainCategories.length > 0) {
-      newFilters.mainCategories = initialState.mainCategories;
-      changed = true;
-    }
-    if (initialState.subCategory) {
-      newFilters.subCategories = [initialState.subCategory];
-      changed = true;
-    }
-    if (initialState.subCategories && initialState.subCategories.length > 0) {
-      newFilters.subCategories = initialState.subCategories;
+    } else if (initialState.locations && initialState.locations.length > 0) {
+      newFilters.cities = initialState.locations;
       changed = true;
     }
 
-    // New additions to handle ExploreTagFilters
-    if (initialState.levels && initialState.levels.length > 0) {
+    // 3. Categories
+    const qMainCats = getArrayParam('mainCategories');
+    if (qMainCats && qMainCats.length > 0) {
+      newFilters.mainCategories = qMainCats;
+      changed = true;
+    } else if (initialState.mainCategories && initialState.mainCategories.length > 0) {
+      newFilters.mainCategories = initialState.mainCategories;
+      changed = true;
+    } else if (initialState.mainCategory) {
+      newFilters.mainCategories = [initialState.mainCategory];
+      changed = true;
+    }
+
+    const qSubCats = getArrayParam('subCategories');
+    if (qSubCats && qSubCats.length > 0) {
+      newFilters.subCategories = qSubCats;
+      changed = true;
+    } else if (initialState.subCategories && initialState.subCategories.length > 0) {
+      newFilters.subCategories = initialState.subCategories;
+      changed = true;
+    } else if (initialState.subCategory) {
+      newFilters.subCategories = [initialState.subCategory];
+      changed = true;
+    }
+
+    // 4. Levels
+    const qLevels = getArrayParam('levels');
+    if (qLevels && qLevels.length > 0) {
+      newFilters.levels = qLevels;
+      changed = true;
+    } else if (initialState.levels && initialState.levels.length > 0) {
       newFilters.levels = initialState.levels;
       changed = true;
     }
-    if (initialState.isNearlyFull !== undefined) {
+
+    // 5. Status / Flags
+    if (searchParams.get('isNearlyFull') === 'true') {
+      newFilters.isNearlyFull = true;
+      changed = true;
+    } else if (initialState.isNearlyFull !== undefined) {
       newFilters.isNearlyFull = initialState.isNearlyFull;
       changed = true;
     }
-    if (initialState.maxPrice !== undefined) {
+
+    // 6. Price
+    const qMaxPrice = searchParams.get('maxPrice');
+    if (qMaxPrice) {
+      newFilters.maxPrice = qMaxPrice;
+      changed = true;
+    } else if (initialState.maxPrice !== undefined) {
       newFilters.maxPrice = String(initialState.maxPrice);
       changed = true;
     }
-    if (initialState.minPrice !== undefined) {
+
+    const qMinPrice = searchParams.get('minPrice');
+    if (qMinPrice) {
+      newFilters.minPrice = qMinPrice;
+      changed = true;
+    } else if (initialState.minPrice !== undefined) {
       newFilters.minPrice = String(initialState.minPrice);
       changed = true;
     }
@@ -69,13 +123,35 @@ const ActivityListPage: React.FC = () => {
     if (changed) {
       setAdvancedFilters(newFilters);
     }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Set search term if present
-    if (initialState.searchTerm) {
-      setSearchTerm(initialState.searchTerm);
-      setConfirmedSearch(initialState.searchTerm);
+  // Sync filters back to query string
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (confirmedSearch) params.set('search', confirmedSearch);
+    if (advancedFilters.cities.length > 0 && !advancedFilters.cities.includes('全台灣')) {
+      params.set('cities', advancedFilters.cities.join(','));
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (advancedFilters.mainCategories.length > 0 && !advancedFilters.mainCategories.includes('所有運動')) {
+      params.set('mainCategories', advancedFilters.mainCategories.join(','));
+    }
+    if (advancedFilters.subCategories.length > 0) {
+      params.set('subCategories', advancedFilters.subCategories.join(','));
+    }
+    if (advancedFilters.levels.length > 0) {
+      params.set('levels', advancedFilters.levels.join(','));
+    }
+    if (advancedFilters.isNearlyFull) params.set('isNearlyFull', 'true');
+    if (advancedFilters.minPrice) params.set('minPrice', advancedFilters.minPrice);
+    if (advancedFilters.maxPrice) params.set('maxPrice', advancedFilters.maxPrice);
+    
+    const newSearch = params.toString();
+    const currentSearch = location.search.startsWith('?') ? location.search.substring(1) : location.search;
+    
+    if (newSearch !== currentSearch) {
+      navigate(`/activities?${newSearch}`, { replace: true, state: location.state });
+    }
+  }, [confirmedSearch, advancedFilters, navigate, location.search, location.state]);
 
   // API state
   const [apiActivities, setApiActivities] = useState<Activity[]>([]);
@@ -448,14 +524,15 @@ const ActivityListPage: React.FC = () => {
             {(activeFilterCount > 0 || (advancedFilters.date && advancedFilters.date !== todayStr) || confirmedSearch) && (
               <button 
                 onClick={handleResetFilters} 
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-[10px] sm:text-xs rounded-xl transition-colors font-bold whitespace-nowrap ${
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-[10px] sm:text-xs rounded-xl transition-colors font-bold whitespace-nowrap ${
                   activeFilterCount > 0 || confirmedSearch
                     ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
                     : 'text-primary hover:bg-primary/5'
                 }`}
+                title={activeFilterCount > 0 || confirmedSearch ? '清除全部' : '回到今天'}
               >
-                <RotateCcw size={13} />
-                <span>
+                <RotateCcw size={14} />
+                <span className="hidden sm:inline">
                   {activeFilterCount > 0 || confirmedSearch ? '清除全部' : '回到今天'}
                 </span>
               </button>
@@ -465,23 +542,25 @@ const ActivityListPage: React.FC = () => {
             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+                className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
                   viewMode === 'list'
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                <ListIcon size={12} /> 列表
+                <ListIcon size={14} /> 
+                <span className="hidden sm:inline">列表</span>
               </button>
               <button
                 onClick={() => setViewMode('map')}
-                className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+                className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
                   viewMode === 'map'
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                <MapIcon size={12} /> 地圖
+                <MapIcon size={14} />
+                <span className="hidden sm:inline">地圖</span>
               </button>
             </div>
           </div>

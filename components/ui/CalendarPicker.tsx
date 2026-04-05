@@ -179,24 +179,27 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
 
                 // Check if date is within 7 days of selectedDate
                 let isInRange = false;
+                let isRangeStart = false;
+                let isRangeEnd = false;
+
+                const dTime = new Date(date).setHours(0,0,0,0);
+                
                 if (selectedDate) {
                   const sel = new Date(selectedDate);
-                  const end = new Date(sel);
-                  end.setDate(sel.getDate() + 7);
-                  
-                  // Compare timestamps normalized to local midnight
-                  const dTime = new Date(date).setHours(0,0,0,0);
                   const selTime = new Date(sel).setHours(0,0,0,0);
-                  const endTime = new Date(end).setHours(0,0,0,0);
+                  const endTime = selTime + 7 * 86400000;
+                  
                   isInRange = dTime >= selTime && dTime < endTime;
-                } else if (isToday || date > new Date()) {
-                  // If no date selected, default range is today + 7
+                  isRangeStart = dTime === selTime;
+                  isRangeEnd = dTime === endTime - 86400000;
+                } else {
                   const today = new Date();
-                  today.setHours(0,0,0,0);
-                  const end = new Date(today);
-                  end.setDate(today.getDate() + 7);
-                  const dTime = new Date(date).setHours(0,0,0,0);
-                  isInRange = dTime >= today.getTime() && dTime < end.getTime();
+                  const todayTime = today.setHours(0,0,0,0);
+                  const endTime = todayTime + 7 * 86400000;
+                  
+                  isInRange = dTime >= todayTime && dTime < endTime;
+                  isRangeStart = dTime === todayTime;
+                  isRangeEnd = dTime === endTime - 86400000;
                 }
 
                 return (
@@ -206,9 +209,9 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
                     className={`flex flex-col items-center justify-center py-1.5 transition-all relative ${
                       isInRange ? 'bg-primary/5 dark:bg-primary/10' : ''
                     } ${
-                      isInRange && i === 0 ? 'rounded-l-xl' : ''
+                      isInRange && (i === 0 || isRangeStart) ? 'rounded-l-xl' : ''
                     } ${
-                      isInRange && i === 6 ? 'rounded-r-xl' : ''
+                      isInRange && (i === 6 || isRangeEnd) ? 'rounded-r-xl' : ''
                     }`}
                   >
                     <span
@@ -289,25 +292,31 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
                 const isSelected = dateStr === selectedDate;
                 const isToday = dateStr === todayStr;
                 const active = activeDateSet.has(dateStr);
+                const colIndex = (firstDay + i - 1) % 7;
 
                 // Check range highlight (same logic as Week view)
                 let isInRange = false;
+                let isRangeStart = false;
+                let isRangeEnd = false;
+
+                const dTime = new Date(date).setHours(0,0,0,0);
+                
                 if (selectedDate) {
                   const sel = new Date(selectedDate);
-                  const end = new Date(sel);
-                  end.setDate(sel.getDate() + 7);
-                  
-                  const dTime = new Date(date).setHours(0,0,0,0);
                   const selTime = new Date(sel).setHours(0,0,0,0);
-                  const endTime = new Date(end).setHours(0,0,0,0);
+                  const endTime = selTime + 7 * 86400000;
+                  
                   isInRange = dTime >= selTime && dTime < endTime;
-                } else if (isToday || date > new Date()) {
+                  isRangeStart = dTime === selTime;
+                  isRangeEnd = dTime === endTime - 86400000;
+                } else {
                   const today = new Date();
-                  today.setHours(0,0,0,0);
-                  const end = new Date(today);
-                  end.setDate(today.getDate() + 7);
-                  const dTime = new Date(date).setHours(0,0,0,0);
-                  isInRange = dTime >= today.getTime() && dTime < end.getTime();
+                  const todayTime = today.setHours(0,0,0,0);
+                  const endTime = todayTime + 7 * 86400000;
+                  
+                  isInRange = dTime >= todayTime && dTime < endTime;
+                  isRangeStart = dTime === todayTime;
+                  isRangeEnd = dTime === endTime - 86400000;
                 }
 
                 cells.push(
@@ -316,6 +325,10 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
                     onClick={() => onSelectDate?.(dateStr)}
                     className={`flex flex-col items-center justify-center py-0.5 relative ${
                       isInRange ? 'bg-primary/5 dark:bg-primary/10' : ''
+                    } ${
+                      isInRange && (colIndex === 0 || isRangeStart) ? 'rounded-l-lg' : ''
+                    } ${
+                      isInRange && (colIndex === 6 || isRangeEnd) ? 'rounded-r-lg' : ''
                     }`}
                   >
                     <span

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, RotateCcw } from 'lucide-react';
 import { FilterState, Level, DEFAULT_FILTER_STATE } from '../../types';
 import CategorySelector from '../home/CategorySelector';
+import RangeSlider from '../ui/RangeSlider';
 
 interface ActivityFilterDrawerProps {
   isOpen: boolean;
@@ -190,27 +191,20 @@ const ActivityFilterDrawer: React.FC<ActivityFilterDrawerProps> = ({ isOpen, onC
           {/* Price */}
           <div>
             <label className="block text-sm font-bold text-gray-900 dark:text-white mb-3">費用範圍 (TWD)</label>
-            <div className="flex items-center gap-2">
-               <div className="relative flex-1">
-                 <input
-                   type="number"
-                   placeholder="最低"
-                   value={filters.minPrice}
-                   onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
-                   className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-primary/30 text-sm dark:text-white"
-                 />
-               </div>
-               <span className="text-gray-300">—</span>
-               <div className="relative flex-1">
-                 <input
-                   type="number"
-                   placeholder="最高"
-                   value={filters.maxPrice}
-                   onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-                   className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-primary/30 text-sm dark:text-white"
-                 />
-               </div>
-            </div>
+            <RangeSlider 
+              min={0}
+              max={2000}
+              step={50}
+              minVal={filters.minPrice === '' ? 0 : parseInt(filters.minPrice)}
+              maxVal={filters.maxPrice === '' ? 2000 : parseInt(filters.maxPrice)}
+              onChange={({ min, max }) => {
+                setFilters({ 
+                  ...filters, 
+                  minPrice: min === 0 ? '' : min.toString(), 
+                  maxPrice: max === 2000 ? '' : max.toString() 
+                });
+              }}
+            />
           </div>
 
         </div>

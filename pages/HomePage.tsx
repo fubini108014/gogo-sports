@@ -20,14 +20,27 @@ const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (type: 'activities' | 'clubs') => {
-    navigate(`/${type}`, {
-      state: {
-        searchTerm: searchQuery,
-        mainCategories: homeMainCategories,
-        subCategories: homeSubCategories,
-        locations: homeLocations,
+    if (type === 'activities') {
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      if (homeMainCategories.length && !homeMainCategories.includes('所有運動')) {
+        params.set('mainCategories', homeMainCategories.join(','));
       }
-    });
+      if (homeSubCategories.length) params.set('subCategories', homeSubCategories.join(','));
+      if (homeLocations.length && !homeLocations.includes('全台灣')) {
+        params.set('cities', homeLocations.join(','));
+      }
+      navigate(`/activities?${params.toString()}`);
+    } else {
+      navigate(`/${type}`, {
+        state: {
+          searchTerm: searchQuery,
+          mainCategories: homeMainCategories,
+          subCategories: homeSubCategories,
+          locations: homeLocations,
+        }
+      });
+    }
   };
 
   const formatLocationLabel = () => {
