@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  ExploreTag, ExploreColorKey, EXPLORE_COLOR_MAP, ExploreTagFilters,
+  ExploreTag, ExploreColorKey, EXPLORE_COLOR_MAP, ExploreTagFilters, Level,
 } from '../../types';
 import { SPORTS_HIERARCHY, TAIWAN_CITIES } from '../../constants';
 
@@ -39,10 +39,24 @@ interface FormState {
   cities: string[];
   mainCategories: string[];
   subCategories: string[];
+  isNearlyFull: boolean;
+  levels: string[];
+  minPrice: string;
+  maxPrice: string;
 }
 
 const EMPTY_FORM: FormState = {
-  label: '', icon: '🎯', colorKey: 'orange', searchTerm: '', cities: [], mainCategories: [], subCategories: [],
+  label: '', 
+  icon: '🎯', 
+  colorKey: 'orange', 
+  searchTerm: '', 
+  cities: [], 
+  mainCategories: [], 
+  subCategories: [],
+  isNearlyFull: false,
+  levels: [],
+  minPrice: '',
+  maxPrice: '',
 };
 
 function tagToForm(tag: ExploreTag): FormState {
@@ -52,6 +66,10 @@ function tagToForm(tag: ExploreTag): FormState {
     cities: tag.filters.cities ?? [],
     mainCategories: tag.filters.mainCategories ?? [],
     subCategories: tag.filters.subCategories ?? [],
+    isNearlyFull: tag.filters.isNearlyFull ?? false,
+    levels: tag.filters.levels ?? [],
+    minPrice: tag.filters.minPrice !== undefined ? String(tag.filters.minPrice) : '',
+    maxPrice: tag.filters.maxPrice !== undefined ? String(tag.filters.maxPrice) : '',
   };
 }
 
@@ -61,6 +79,10 @@ function formToFilters(form: FormState): ExploreTagFilters {
   if (form.cities.length > 0) filters.cities = form.cities;
   if (form.mainCategories.length > 0) filters.mainCategories = form.mainCategories;
   if (form.subCategories.length > 0) filters.subCategories = form.subCategories;
+  if (form.isNearlyFull) filters.isNearlyFull = true;
+  if (form.levels.length > 0) filters.levels = form.levels;
+  if (form.minPrice !== '') filters.minPrice = Number(form.minPrice);
+  if (form.maxPrice !== '') filters.maxPrice = Number(form.maxPrice);
   return filters;
 }
 
@@ -68,7 +90,8 @@ function formToFilters(form: FormState): ExploreTagFilters {
 
 const Toggle: React.FC<{ on: boolean; onChange: () => void }> = ({ on, onChange }) => (
   <button
-    onClick={onChange}
+    type="button"
+    onClick={(e) => { e.stopPropagation(); onChange(); }}
     className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${on ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
   >
     <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-5' : ''}`} />
@@ -79,13 +102,18 @@ const Toggle: React.FC<{ on: boolean; onChange: () => void }> = ({ on, onChange 
 
 function filterSummary(form: FormState): string {
   const parts: string[] = [];
+  if (form.isNearlyFull) parts.push('🔥 快滿');
   if (form.cities.length > 0)
     parts.push(form.cities.length === 1 ? form.cities[0] : `${form.cities[0]} +${form.cities.length - 1}`);
   if (form.subCategories.length > 0)
     parts.push(form.subCategories.length === 1 ? form.subCategories[0] : `${form.subCategories[0]} +${form.subCategories.length - 1}`);
   else if (form.mainCategories.length > 0)
     parts.push(form.mainCategories.length === 1 ? form.mainCategories[0] : `${form.mainCategories[0]} +${form.mainCategories.length - 1}`);
+  
+  if (form.levels.length > 0) parts.push(form.levels.join(','));
+  if (form.minPrice || form.maxPrice) parts.push(`$${form.minPrice || 0}-${form.maxPrice || '∞'}`);
   if (form.searchTerm.trim()) parts.push(`"${form.searchTerm.trim()}"`);
+  
   return parts.length > 0 ? parts.join(' · ') : '全部活動';
 }
 
@@ -97,7 +125,7 @@ interface TagRowProps {
   onToggle: (id: string) => void;
 }
 
-function SortableTagRow({ tag, onEdit, onToggle }: TagRowProps) {
+const SortableTagRow: React.FC<TagRowProps> = ({ tag, onEdit, onToggle }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tag.id });
   const c = EXPLORE_COLOR_MAP[tag.colorKey];
   return (
@@ -137,7 +165,7 @@ function SortableTagRow({ tag, onEdit, onToggle }: TagRowProps) {
       <Toggle on={tag.enabled} onChange={() => onToggle(tag.id)} />
     </div>
   );
-}
+};
 
 // ── Main Modal ────────────────────────────────────────────────────
 
@@ -435,6 +463,15 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
                     {form.cities.length === 0 && <p className="text-[10px] text-slate-400 mt-2">未選擇 = 全台灣</p>}
                   </div>
 
+                  {/* 即將額滿 */}
+                  <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-2xl border border-orange-100 dark:border-orange-900/30 flex items-center justify-between">
+                    <div>
+                        <p className="font-bold text-orange-700 dark:text-orange-400 text-sm">🔥 即將額滿</p>
+                        <p className="text-[10px] text-orange-600/70 dark:text-orange-400/70">僅顯示報名人數 80% 以上的活動</p>
+                    </div>
+                    <Toggle on={form.isNearlyFull} onChange={() => setForm(f => ({ ...f, isNearlyFull: !f.isNearlyFull }))} />
+                  </div>
+
                   {/* 運動項目 */}
                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -483,6 +520,56 @@ const ExploreTagManagerModal: React.FC<Props> = ({ isOpen, onClose, exploreTags,
                       })}
                     </div>
                     {form.mainCategories.length === 0 && <p className="text-[10px] text-slate-400 mt-2">未選擇 = 所有運動</p>}
+                  </div>
+
+                  {/* 活動程度 */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-black text-slate-600 dark:text-slate-300">📊 活動程度</span>
+                      {form.levels.length > 0 && (
+                        <button onClick={() => setForm(f => ({ ...f, levels: [] }))} className="text-[10px] text-slate-400 hover:text-red-500 font-bold">清除</button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.values(Level).map(level => (
+                        <button
+                          key={level}
+                          onClick={() => setForm(f => ({
+                            ...f,
+                            levels: f.levels.includes(level) ? f.levels.filter(l => l !== level) : [...f.levels, level]
+                          }))}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors border ${
+                            form.levels.includes(level)
+                              ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100'
+                              : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                          }`}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 費用範圍 */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
+                    <span className="text-xs font-black text-slate-600 dark:text-slate-300 block mb-3">💰 費用範圍 (TWD)</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        placeholder="最低"
+                        value={form.minPrice}
+                        onChange={e => setForm(f => ({ ...f, minPrice: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <span className="text-slate-300">—</span>
+                      <input
+                        type="number"
+                        placeholder="最高"
+                        value={form.maxPrice}
+                        onChange={e => setForm(f => ({ ...f, maxPrice: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
                   </div>
 
                   {/* 關鍵字 */}

@@ -49,7 +49,13 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     if (q.cities && q.cities !== '全台灣') {
       where.city = { in: q.cities.split(',') }
     }
-    if (q.date) {
+    if (q.startDate && q.endDate) {
+      const start = new Date(q.startDate)
+      const end = new Date(q.endDate)
+      // Ensure the end date covers the entire day
+      end.setHours(23, 59, 59, 999)
+      where.date = { gte: start, lte: end }
+    } else if (q.date) {
       const d = new Date(q.date)
       const next = new Date(d)
       next.setDate(next.getDate() + 1)

@@ -6,8 +6,8 @@ import { Activity, DEFAULT_FILTER_STATE } from '../types';
 import { apiGetActivities, LEVEL_REVERSE } from '../services/api';
 import ActivityList from '../components/activity/ActivityList';
 import ActivityMap from '../components/activity/ActivityMap';
-import CategorySelector from '../components/home/CategorySelector';
-import { Search, ChevronLeft, Filter, List as ListIcon, Map as MapIcon, X } from 'lucide-react';
+import CalendarPicker from '../components/ui/CalendarPicker';
+import { Search, ChevronLeft, Filter, List as ListIcon, Map as MapIcon, X, RotateCcw } from 'lucide-react';
 
 const ActivityListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,18 +20,60 @@ const ActivityListPage: React.FC = () => {
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState(initialState.searchTerm || '');
-  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
-  const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>(
-    initialState.mainCategories || (initialState.mainCategory ? [initialState.mainCategory] : ['所有運動'])
-  );
-  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>(
-    initialState.subCategories || (initialState.subCategory ? [initialState.subCategory] : [])
-  );
+  const [confirmedSearch, setConfirmedSearch] = useState(searchTerm);
 
-  // Apply cities from explore tag state on mount
+  // Apply initial states from navigation on mount
   useEffect(() => {
+    let newFilters = { ...advancedFilters };
+    let changed = false;
+
     if (initialState.cities && initialState.cities.length > 0) {
-      setAdvancedFilters({ ...advancedFilters, cities: initialState.cities });
+      newFilters.cities = initialState.cities;
+      changed = true;
+    }
+    if (initialState.mainCategory) {
+      newFilters.mainCategories = [initialState.mainCategory];
+      changed = true;
+    }
+    if (initialState.mainCategories && initialState.mainCategories.length > 0) {
+      newFilters.mainCategories = initialState.mainCategories;
+      changed = true;
+    }
+    if (initialState.subCategory) {
+      newFilters.subCategories = [initialState.subCategory];
+      changed = true;
+    }
+    if (initialState.subCategories && initialState.subCategories.length > 0) {
+      newFilters.subCategories = initialState.subCategories;
+      changed = true;
+    }
+
+    // New additions to handle ExploreTagFilters
+    if (initialState.levels && initialState.levels.length > 0) {
+      newFilters.levels = initialState.levels;
+      changed = true;
+    }
+    if (initialState.isNearlyFull !== undefined) {
+      newFilters.isNearlyFull = initialState.isNearlyFull;
+      changed = true;
+    }
+    if (initialState.maxPrice !== undefined) {
+      newFilters.maxPrice = String(initialState.maxPrice);
+      changed = true;
+    }
+    if (initialState.minPrice !== undefined) {
+      newFilters.minPrice = String(initialState.minPrice);
+      changed = true;
+    }
+
+    if (changed) {
+      setAdvancedFilters(newFilters);
+    }
+
+    // Set search term if present
+    if (initialState.searchTerm) {
+      setSearchTerm(initialState.searchTerm);
+      setConfirmedSearch(initialState.searchTerm);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -39,12 +81,75 @@ const ActivityListPage: React.FC = () => {
   const [apiActivities, setApiActivities] = useState<Activity[]>([]);
   const [apiTotal, setApiTotal] = useState(0);
   const [apiLoading, setApiLoading] = useState(true);
+  const [activeDates, setActiveDates] = useState<string[]>([]);
+  const [viewDate, setViewDate] = useState<Date>(new Date());
 
-  // Debounce search
+  // Fetch active dates for calendar dots (ignoring the date filter)
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchTerm), 350);
-    return () => clearTimeout(t);
-  }, [searchTerm]);
+    // Calculate start and end of the visible month
+    const startOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+    const endOfMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
+    
+    const toISO = (d: Date) => {
+      const offset = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - offset * 60 * 1000);
+      return local.toISOString().split('T')[0];
+    };
+
+    const params: Record<string, string> = { 
+      limit: '100',
+      startDate: toISO(startOfMonth),
+      endDate: toISO(endOfMonth)
+    };
+
+    if (confirmedSearch) params.search = confirmedSearch;
+    if (!advancedFilters.cities.includes('全台灣')) {
+      params.cities = advancedFilters.cities.join(',');
+    }
+    if (advancedFilters.minPrice) params.minPrice = advancedFilters.minPrice;
+    if (advancedFilters.maxPrice) params.maxPrice = advancedFilters.maxPrice;
+    if (advancedFilters.levels.length > 0) {
+      params.levels = advancedFilters.levels.map(l => LEVEL_REVERSE[l] ?? l).join(',');
+    }
+    if (advancedFilters.isNearlyFull) params.isNearlyFull = 'true';
+
+    if (!advancedFilters.mainCategories.includes('所有運動')) {
+      if (advancedFilters.subCategories.length > 0) {
+        params.tags = advancedFilters.subCategories.join(',');
+      } else {
+        const subItems: string[] = [];
+        advancedFilters.mainCategories.forEach(main => {
+          const cat = SPORTS_HIERARCHY.find(c => c.name === main);
+          if (cat) subItems.push(...cat.items);
+        });
+        if (subItems.length > 0) params.tags = subItems.join(',');
+      }
+    }
+
+    apiGetActivities(params)
+      .then(({ data }) => {
+        const dates = Array.from(new Set(
+          data.map(activity => {
+            const date = new Date(activity.date);
+            const offset = date.getTimezoneOffset();
+            const local = new Date(date.getTime() - offset * 60 * 1000);
+            return local.toISOString().split('T')[0];
+          })
+        ));
+        setActiveDates(dates);
+      })
+      .catch(() => {});
+  }, [
+    viewDate,
+    confirmedSearch,
+    advancedFilters.cities,
+    advancedFilters.minPrice,
+    advancedFilters.maxPrice,
+    advancedFilters.levels,
+    advancedFilters.isNearlyFull,
+    advancedFilters.mainCategories,
+    advancedFilters.subCategories
+  ]);
 
   // Fetch from API whenever filters change
   useEffect(() => {
@@ -52,12 +157,30 @@ const ActivityListPage: React.FC = () => {
 
     const params: Record<string, string> = { limit: '50' };
 
-    if (debouncedSearch) params.search = debouncedSearch;
+    if (confirmedSearch) params.search = confirmedSearch;
 
     if (!advancedFilters.cities.includes('全台灣')) {
       params.cities = advancedFilters.cities.join(',');
     }
-    if (advancedFilters.date) params.date = advancedFilters.date;
+    
+    if (advancedFilters.date) {
+      params.date = advancedFilters.date;
+    } else {
+      // Default: Today and next 7 days
+      const today = new Date();
+      const end = new Date();
+      end.setDate(today.getDate() + 7);
+      
+      const toISO = (d: Date) => {
+        const offset = d.getTimezoneOffset();
+        const local = new Date(d.getTime() - offset * 60 * 1000);
+        return local.toISOString().split('T')[0];
+      };
+      
+      params.startDate = toISO(today);
+      params.endDate = toISO(end);
+    }
+
     if (advancedFilters.minPrice) params.minPrice = advancedFilters.minPrice;
     if (advancedFilters.maxPrice) params.maxPrice = advancedFilters.maxPrice;
     if (advancedFilters.levels.length > 0) {
@@ -66,16 +189,16 @@ const ActivityListPage: React.FC = () => {
     if (advancedFilters.isNearlyFull) params.isNearlyFull = 'true';
 
     // Sport category → tags
-    if (!selectedMainCategories.includes('所有運動')) {
-      if (selectedSubCategories.length > 0) {
-        params.tags = selectedSubCategories.join(',');
+    if (!advancedFilters.mainCategories.includes('所有運動')) {
+      if (advancedFilters.subCategories.length > 0) {
+        params.tags = advancedFilters.subCategories.join(',');
       } else {
         const subItems: string[] = [];
-        selectedMainCategories.forEach(main => {
+        advancedFilters.mainCategories.forEach(main => {
           const cat = SPORTS_HIERARCHY.find(c => c.name === main);
           if (cat) subItems.push(...cat.items);
         });
-        if (subItems.length > 0) params.tags = subItems.join(',');
+        if (subItems.length > 0) params.tags = subItems.length === 0 ? undefined : subItems.join(',');
       }
     }
 
@@ -86,42 +209,39 @@ const ActivityListPage: React.FC = () => {
       })
       .catch(() => {})
       .finally(() => setApiLoading(false));
-  }, [debouncedSearch, selectedMainCategories, selectedSubCategories, advancedFilters]);
+  }, [confirmedSearch, advancedFilters]);
 
-  // Calculate active filter count
+  // Calculate active filter count (excluding date as it's now primary)
   const activeFilterCount = [
     !advancedFilters.cities.includes('全台灣'),
-    !!advancedFilters.date,
     !!advancedFilters.minPrice,
     !!advancedFilters.maxPrice,
     advancedFilters.levels.length > 0,
     advancedFilters.isNearlyFull,
+    !advancedFilters.mainCategories.includes('所有運動'),
+    advancedFilters.subCategories.length > 0,
   ].filter(Boolean).length;
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setSelectedMainCategories(['所有運動']);
-    setSelectedSubCategories([]);
+    setConfirmedSearch('');
     setAdvancedFilters(DEFAULT_FILTER_STATE);
   };
 
-  const handleMainCategoryToggle = (name: string) => {
-    if (name === '所有運動') {
-      setSelectedMainCategories(['所有運動']);
-      setSelectedSubCategories([]);
-      return;
-    }
-    setSelectedMainCategories(prev => {
-      const filtered = prev.filter(i => i !== '所有運動');
-      const next = filtered.includes(name) ? filtered.filter(i => i !== name) : [...filtered, name];
-      return next.length === 0 ? ['所有運動'] : next;
-    });
+  const handleSearchTrigger = () => {
+    setConfirmedSearch(searchTerm);
   };
 
-  const handleSubCategoryToggle = (name: string) => {
-    setSelectedSubCategories(prev =>
-      prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
-    );
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearchTrigger();
+    }
+  };
+
+  const handleDateSelect = (date: string) => {
+    // If selecting same date, toggle it off
+    const newDate = advancedFilters.date === date ? '' : date;
+    setAdvancedFilters({ ...advancedFilters, date: newDate });
   };
 
   return (
@@ -143,17 +263,24 @@ const ActivityListPage: React.FC = () => {
       <div className="sticky top-[60px] z-30 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md -mx-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shadow-sm">
         {/* Search + filter button */}
         <div className="flex gap-2 mb-3">
-          <div className="relative flex-1">
+          <div className="relative flex-1 group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={18} className="text-gray-400 dark:text-gray-500" />
+              <Search size={18} className="text-gray-400 dark:text-gray-500 group-focus-within:text-primary transition-colors" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-gray-600 rounded-xl leading-5 bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
+              className="block w-full pl-10 pr-16 py-3 border border-gray-200 dark:border-gray-600 rounded-xl leading-5 bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
               placeholder="搜尋活動、地點、標籤..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
+            <button
+              onClick={handleSearchTrigger}
+              className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-dark transition-colors shadow-sm"
+            >
+              搜尋
+            </button>
           </div>
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -173,78 +300,163 @@ const ActivityListPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Category selector */}
+        {/* Calendar Picker (Primary filter) */}
         <div className="mb-2">
-          <CategorySelector
-            selectedMainCategories={selectedMainCategories}
-            selectedSubCategories={selectedSubCategories}
-            onMainCategoryToggle={handleMainCategoryToggle}
-            onSubCategoryToggle={handleSubCategoryToggle}
-            variant="compact"
+          <CalendarPicker
+            selectedDate={advancedFilters.date}
+            onSelectDate={handleDateSelect}
+            onViewDateChange={setViewDate}
+            activeDates={activeDates}
+            //showViewSwitcher={false}
           />
         </div>
 
-        {/* Count + view toggle */}
-        <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-800/50 mt-1">
-          <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
-            {apiLoading ? (
-              <span>搜尋中...</span>
-            ) : (
-              <span>共找到 <span className="text-primary font-bold">{apiTotal}</span> 個活動</span>
+        {/* Filter Summary & View Toggle */}
+        <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-800/50 mt-1 gap-3">
+          {/* Scrollable container for Chips */}
+          <div className="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+            {/* Loading state indicator */}
+            {apiLoading && (
+              <div className="flex-shrink-0 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium animate-pulse">
+                搜尋中...
+              </div>
             )}
-            {(activeFilterCount > 0 || !selectedMainCategories.includes('所有運動')) && (
-              <>
-                <div className="h-3 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
-                <button onClick={handleResetFilters} className="text-red-500 hover:underline">重設</button>
-              </>
+
+            {/* Filter Chips */}
+            {!isFilterOpen && (
+              <div className="flex gap-2 items-center flex-shrink-0">
+                {advancedFilters.date && (
+                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-primary text-white px-3 py-1 rounded-full font-bold">
+                    📅 {advancedFilters.date}
+                    <button 
+                      onClick={() => setAdvancedFilters({...advancedFilters, date: ''})} 
+                      className="hover:text-gray-200"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                )}
+                {confirmedSearch && (
+                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold">
+                    關鍵字: {confirmedSearch}
+                    <button 
+                      onClick={() => {
+                        setSearchTerm('');
+                        setConfirmedSearch('');
+                      }} 
+                      className="hover:text-blue-800"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                )}
+                {advancedFilters.isNearlyFull && (
+                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-orange-100 text-orange-600 px-3 py-1 rounded-full font-bold">
+                    🔥 快滿
+                    <button onClick={() => setAdvancedFilters({...advancedFilters, isNearlyFull: false})} className="hover:text-orange-800"><X size={10} /></button>
+                  </span>
+                )}
+                
+                {/* Categories */}
+                {!advancedFilters.mainCategories.includes('所有運動') && advancedFilters.mainCategories.map(cat => (
+                  <span key={cat} className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-3 py-1 rounded-full font-bold">
+                    {cat}
+                    <button 
+                      onClick={() => {
+                        const next = advancedFilters.mainCategories.filter(c => c !== cat);
+                        setAdvancedFilters({
+                          ...advancedFilters, 
+                          mainCategories: next.length === 0 ? ['所有運動'] : next,
+                          subCategories: [] 
+                        });
+                      }} 
+                      className="hover:text-orange-800"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Cities */}
+                {!advancedFilters.cities.includes('全台灣') && advancedFilters.cities.map(city => (
+                  <span key={city} className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-3 py-1 rounded-full font-bold">
+                    {city}
+                    <button 
+                      onClick={() => {
+                        const next = advancedFilters.cities.filter(c => c !== city);
+                        setAdvancedFilters({
+                          ...advancedFilters,
+                          cities: next.length === 0 ? ['全台灣'] : next
+                        });
+                      }} 
+                      className="hover:text-gray-800 dark:hover:text-white"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Levels */}
+                {advancedFilters.levels.map(l => (
+                  <span key={l} className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-3 py-1 rounded-full font-bold">
+                    {l}
+                    <button 
+                      onClick={() => setAdvancedFilters({...advancedFilters, levels: advancedFilters.levels.filter(lv => lv !== l)})} 
+                      className="hover:text-gray-800 dark:hover:text-white"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Price */}
+                {(advancedFilters.minPrice || advancedFilters.maxPrice) && (
+                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-green-100 text-green-600 px-3 py-1 rounded-full font-bold">
+                    預算: {advancedFilters.minPrice || '0'} - {advancedFilters.maxPrice || '∞'}
+                    <button onClick={() => setAdvancedFilters({...advancedFilters, minPrice: '', maxPrice: ''})} className="hover:text-green-800"><X size={10} /></button>
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
-          <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
-                viewMode === 'list'
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }`}
-            >
-              <ListIcon size={12} /> 列表
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
-                viewMode === 'map'
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }`}
-            >
-              <MapIcon size={12} /> 地圖
-            </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Clear All Button */}
+            {(activeFilterCount > 0 || advancedFilters.date || searchTerm) && (
+              <button 
+                onClick={handleResetFilters} 
+                className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] sm:text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors font-bold whitespace-nowrap"
+              >
+                <RotateCcw size={13} />
+                <span>清除全部</span>
+              </button>
+            )}
+
+            {/* View Mode Toggle - Fixed on right */}
+            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+              >
+                <ListIcon size={12} /> 列表
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+                  viewMode === 'map'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+              >
+                <MapIcon size={12} /> 地圖
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Active filter chips */}
-        {activeFilterCount > 0 && !isFilterOpen && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pt-1 animate-fade-in">
-            {advancedFilters.isNearlyFull && (
-              <span className="flex-shrink-0 text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded font-bold">🔥 快滿</span>
-            )}
-            {!advancedFilters.cities.includes('全台灣') && (
-              <span className="flex-shrink-0 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded font-bold">
-                {advancedFilters.cities[0]}{advancedFilters.cities.length > 1 ? `+${advancedFilters.cities.length - 1}` : ''}
-              </span>
-            )}
-            {advancedFilters.date && (
-              <span className="flex-shrink-0 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded font-bold">
-                {advancedFilters.date}
-              </span>
-            )}
-            {advancedFilters.levels.map(l => (
-              <span key={l} className="flex-shrink-0 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded font-bold">{l}</span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Content */}
@@ -253,7 +465,7 @@ const ActivityListPage: React.FC = () => {
           <ActivityList
             activities={apiActivities}
             onActivityClick={handleActivityClick}
-            searchTerm={debouncedSearch}
+            searchTerm={confirmedSearch}
             isLoading={apiLoading}
           />
         ) : (

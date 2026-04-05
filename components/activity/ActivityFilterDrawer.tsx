@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, RotateCcw } from 'lucide-react';
-import { FilterState, Level } from '../../types';
+import { FilterState, Level, DEFAULT_FILTER_STATE } from '../../types';
+import CategorySelector from '../home/CategorySelector';
 
 interface ActivityFilterDrawerProps {
   isOpen: boolean;
@@ -53,21 +54,33 @@ const ActivityFilterDrawer: React.FC<ActivityFilterDrawerProps> = ({ isOpen, onC
     });
   };
 
+  const handleMainCategoryToggle = (name: string) => {
+    setFilters(prev => {
+      if (name === '所有運動') {
+        return { ...prev, mainCategories: ['所有運動'], subCategories: [] };
+      }
+      const filtered = prev.mainCategories.filter(i => i !== '所有運動');
+      const next = filtered.includes(name) ? filtered.filter(i => i !== name) : [...filtered, name];
+      return { ...prev, mainCategories: next.length === 0 ? ['所有運動'] : next };
+    });
+  };
+
+  const handleSubCategoryToggle = (name: string) => {
+    setFilters(prev => ({
+      ...prev,
+      subCategories: prev.subCategories.includes(name)
+        ? prev.subCategories.filter(i => i !== name)
+        : [...prev.subCategories, name]
+    }));
+  };
+
   const handleApply = () => {
     onApply(filters);
     onClose();
   };
 
   const handleInternalReset = () => {
-    const defaultState = {
-      cities: ['全台灣'],
-      date: '',
-      minPrice: '',
-      maxPrice: '',
-      levels: [],
-      isNearlyFull: false
-    };
-    setFilters(defaultState);
+    setFilters(DEFAULT_FILTER_STATE);
   };
 
   if (!isOpen && !isVisible) return null;
@@ -113,6 +126,20 @@ const ActivityFilterDrawer: React.FC<ActivityFilterDrawerProps> = ({ isOpen, onC
             </button>
           </div>
 
+          {/* Sport Category */}
+          <div>
+            <label className="block text-sm font-bold text-gray-900 dark:text-white mb-3">運動項目</label>
+            <div className="-mx-2">
+              <CategorySelector
+                selectedMainCategories={filters.mainCategories}
+                selectedSubCategories={filters.subCategories}
+                onMainCategoryToggle={handleMainCategoryToggle}
+                onSubCategoryToggle={handleSubCategoryToggle}
+                variant="compact"
+              />
+            </div>
+          </div>
+
           {/* Region */}
           <div>
             <label className="block text-sm font-bold text-gray-900 dark:text-white mb-3">地區 / 城市</label>
@@ -133,19 +160,6 @@ const ActivityFilterDrawer: React.FC<ActivityFilterDrawerProps> = ({ isOpen, onC
                   </button>
                 );
               })}
-            </div>
-          </div>
-
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-bold text-gray-900 dark:text-white mb-3">日期</label>
-            <div className="relative group">
-              <input
-                type="date"
-                value={filters.date}
-                onChange={(e) => setFilters({ ...filters, date: e.target.value })}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-primary/30 text-gray-700 dark:text-white font-medium transition-all"
-              />
             </div>
           </div>
 

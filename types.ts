@@ -6,6 +6,8 @@ export interface FilterState {
   maxPrice: string;
   levels: string[];
   isNearlyFull: boolean;
+  mainCategories: string[];
+  subCategories: string[];
 }
 
 export const DEFAULT_FILTER_STATE: FilterState = {
@@ -15,6 +17,8 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   maxPrice: '',
   levels: [],
   isNearlyFull: false,
+  mainCategories: ['所有運動'],
+  subCategories: [],
 };
 
 export enum RegistrationMode {

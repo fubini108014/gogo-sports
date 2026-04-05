@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Bell, Plus, Home, Users, MessageSquare, Compass } from 'lucide-react';
 import { SPORTS_HIERARCHY } from '../constants';
 import { useAppContext } from '../context/AppContext';
+import { DEFAULT_FILTER_STATE } from '../types';
 import CreateMenuModal from './modals/CreateMenuModal';
 import CreatePostModal from './modals/CreatePostModal';
 import CreateActivityModal from './modals/CreateActivityModal';
@@ -12,6 +13,7 @@ import SettingsModal from './modals/SettingsModal';
 import ActivityFilterDrawer from './activity/ActivityFilterDrawer';
 import SportCategoryModal from './modals/SportCategoryModal';
 import AuthModal from './modals/AuthModal';
+import DateSelectModal from './modals/DateSelectModal';
 import ExploreTagManagerModal from './modals/ExploreTagManagerModal';
 import LocationMapModal from './modals/LocationMapModal';
 import NavItem from './ui/NavItem';
@@ -21,7 +23,7 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const {
-    user, clubs, notifications,
+    activities, user, clubs, notifications,
     toasts,
     isLoggedIn, isAuthModalOpen, setIsAuthModalOpen,
     handleLogin, handleRegister,
@@ -38,6 +40,7 @@ const Layout: React.FC = () => {
     handleCreatePost, handleCreateActivity, handleCreateClub,
     addToast,
     exploreTags, saveExploreTags, isExploreManagerOpen, setIsExploreManagerOpen,
+    isDateSelectModalOpen, setIsDateSelectModalOpen, selectedCalendarDate, setSelectedCalendarDate,
   } = useAppContext();
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -182,7 +185,7 @@ const Layout: React.FC = () => {
       </div>
 
       {/* Page Content */}
-      <main className="max-w-4xl mx-auto md:pb-32 px-4 py-6">
+      <main className="max-w-4xl mx-auto md:pb-32">
         <Outlet />
       </main>
 
@@ -309,7 +312,7 @@ const Layout: React.FC = () => {
         onClose={() => setIsFilterOpen(false)}
         currentFilters={advancedFilters}
         onApply={setAdvancedFilters}
-        onReset={() => setAdvancedFilters({ cities: ['全台灣'], date: '', minPrice: '', maxPrice: '', levels: [], isNearlyFull: false })}
+        onReset={() => setAdvancedFilters(DEFAULT_FILTER_STATE)}
       />
 
       <SettingsModal
@@ -324,6 +327,14 @@ const Layout: React.FC = () => {
         onClose={() => setIsExploreManagerOpen(false)}
         exploreTags={exploreTags}
         onSave={saveExploreTags}
+      />
+
+      <DateSelectModal
+        isOpen={isDateSelectModalOpen}
+        onClose={() => setIsDateSelectModalOpen(false)}
+        currentDate={selectedCalendarDate}
+        onSelectDate={setSelectedCalendarDate}
+        activeDates={activities.map(a => a.date)}
       />
 
       <Toast toasts={toasts} />

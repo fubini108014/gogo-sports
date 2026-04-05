@@ -101,6 +101,12 @@ interface AppContextType {
   isExploreManagerOpen: boolean;
   setIsExploreManagerOpen: (v: boolean) => void;
 
+  // Date select modal
+  isDateSelectModalOpen: boolean;
+  setIsDateSelectModalOpen: (v: boolean) => void;
+  selectedCalendarDate: Date;
+  setSelectedCalendarDate: (d: Date) => void;
+
   // Handlers
   handleActivityClick: (activity: Activity) => void;
   handleClubClick: (clubId: string) => void;
@@ -173,6 +179,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Explore Tags
   const [exploreTags, setExploreTags] = useState<ExploreTag[]>(() => loadExploreTagsFromStorage());
   const [isExploreManagerOpen, setIsExploreManagerOpen] = useState(false);
+
+  // Date select modal
+  const [isDateSelectModalOpen, setIsDateSelectModalOpen] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
 
   const saveExploreTags = (tags: ExploreTag[]) => {
     setExploreTags(tags);
@@ -470,6 +480,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setHomeLocations, setHomeMainCategories, setHomeSubCategories,
       toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
       exploreTags, saveExploreTags, isExploreManagerOpen, setIsExploreManagerOpen,
+      isDateSelectModalOpen, setIsDateSelectModalOpen, selectedCalendarDate, setSelectedCalendarDate,
       handleActivityClick, handleClubClick,
       handleRegistrationConfirm, handleCancelRegistration,
       handleJoinClub, handleLeaveClub,

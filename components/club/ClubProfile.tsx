@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Club, Activity, Post, PostType, CommentItem } from '../../types';
 import RankBadge from '../ui/RankBadge';
-import { MapPin, Users, Star, Calendar as CalendarIcon, Image as ImageIcon, ChevronRight, PenSquare, Heart, MessageSquare, ArrowUpDown, ChevronLeft, MoreHorizontal, Send, X, CornerDownRight, AlertTriangle, Edit2 } from 'lucide-react';
+import CalendarPicker from '../ui/CalendarPicker';
+import { MapPin, Users, Star, Calendar as CalendarIcon, Image as ImageIcon, ChevronRight, PenSquare, Heart, MessageSquare, ArrowUpDown, MoreHorizontal, Send, X, CornerDownRight, AlertTriangle, Edit2 } from 'lucide-react';
 import CreatePostModal from '../modals/CreatePostModal';
 import ClubManageModal from '../modals/ClubManageModal';
 import { useAppContext } from '../../context/AppContext';
@@ -64,8 +65,6 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Calendar State
-  const [calendarView, setCalendarView] = useState<'week' | 'month' | 'year'>('week');
-  const [calendarDate, setCalendarDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Sync currentClub if parent passes a new club object
@@ -519,202 +518,6 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
     );
   };
 
-  // Calendar Logic
-  const handleCalendarNavigate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(calendarDate);
-    if (calendarView === 'week') {
-      newDate.setDate(calendarDate.getDate() + (direction === 'next' ? 7 : -7));
-    } else if (calendarView === 'month') {
-      newDate.setMonth(calendarDate.getMonth() + (direction === 'next' ? 1 : -1));
-    } else if (calendarView === 'year') {
-      newDate.setFullYear(calendarDate.getFullYear() + (direction === 'next' ? 1 : -1));
-    }
-    setCalendarDate(newDate);
-  };
-
-  const renderCalendar = () => {
-    const currentYear = calendarDate.getFullYear();
-    const currentMonth = calendarDate.getMonth(); // 0-indexed
-
-    // Header Label
-    let label = '';
-    if (calendarView === 'week' || calendarView === 'month') {
-      label = `${currentYear}年 ${currentMonth + 1}月`;
-    } else {
-      label = `${currentYear}年`;
-    }
-
-    // Helper to check activity exists on date
-    const hasActivity = (d: string) => clubActivities.some(a => a.date === d);
-
-    // Helper to format YYYY-MM-DD
-    const formatDate = (date: Date) => {
-      const offset = date.getTimezoneOffset();
-      const local = new Date(date.getTime() - (offset * 60 * 1000));
-      return local.toISOString().split('T')[0];
-    };
-
-    return (
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-0">
-        {/* Calendar Header */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleCalendarNavigate('prev')}
-              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <h3 className="font-bold text-gray-900 dark:text-white text-lg w-32 text-center select-none">
-              {label}
-            </h3>
-            <button
-              onClick={() => handleCalendarNavigate('next')}
-              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
-
-          {/* View Switcher */}
-          <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
-             {(['week', 'month', 'year'] as const).map((v) => (
-               <button
-                 key={v}
-                 onClick={() => setCalendarView(v)}
-                 className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                   calendarView === v
-                   ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                 }`}
-               >
-                 {v === 'week' ? '週' : v === 'month' ? '月' : '年'}
-               </button>
-             ))}
-          </div>
-        </div>
-
-        {/* Content Views */}
-
-        {/* WEEK VIEW */}
-        {calendarView === 'week' && (
-          <div className="grid grid-cols-7 gap-1">
-             {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-               <div key={d} className="text-center text-[10px] text-gray-400 dark:text-gray-500 py-1">{d}</div>
-             ))}
-             {Array.from({ length: 7 }).map((_, i) => {
-                // Calculate start of week (Sunday)
-                const startOfWeek = new Date(calendarDate);
-                const day = startOfWeek.getDay(); // 0 (Sun) to 6 (Sat)
-                startOfWeek.setDate(startOfWeek.getDate() - day);
-
-                const date = new Date(startOfWeek);
-                date.setDate(startOfWeek.getDate() + i);
-
-                const dateStr = formatDate(date);
-                const isSelected = dateStr === selectedDate;
-                const isToday = dateStr === new Date().toISOString().split('T')[0];
-                const active = hasActivity(dateStr);
-
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedDate(dateStr)}
-                    className={`flex flex-col items-center justify-center py-2 rounded-xl transition-all relative ${
-                       isSelected ? 'bg-gray-900 dark:bg-gray-600 text-white shadow-md scale-105 z-10' : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
-                    }`}
-                  >
-                     <span className={`text-xs ${isToday && !isSelected ? 'text-primary font-bold' : ''}`}>{date.getDate()}</span>
-                     <div className={`mt-1 w-1.5 h-1.5 rounded-full ${active ? (isSelected ? 'bg-primary' : 'bg-primary') : 'bg-transparent'}`}></div>
-                  </button>
-                );
-             })}
-          </div>
-        )}
-
-        {/* MONTH VIEW */}
-        {calendarView === 'month' && (
-           <div>
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-                  <div key={d} className="text-center text-[10px] text-gray-400 dark:text-gray-500">{d}</div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                 {(() => {
-                    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-                    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-                    const days = [];
-
-                    // Padding
-                    for (let i = 0; i < firstDay; i++) {
-                       days.push(<div key={`empty-${i}`} className="h-10"></div>);
-                    }
-
-                    // Days
-                    for (let i = 1; i <= daysInMonth; i++) {
-                       const date = new Date(currentYear, currentMonth, i);
-                       const dateStr = formatDate(date);
-                       const isSelected = dateStr === selectedDate;
-                       const active = hasActivity(dateStr);
-
-                       days.push(
-                         <button
-                           key={i}
-                           onClick={() => setSelectedDate(dateStr)}
-                           className={`h-9 flex flex-col items-center justify-center rounded-lg transition-all ${
-                             isSelected
-                             ? 'bg-gray-900 dark:bg-gray-600 text-white shadow-md'
-                             : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
-                           }`}
-                         >
-                            <span className="text-xs">{i}</span>
-                            {active && <div className={`w-1 h-1 rounded-full mt-0.5 ${isSelected ? 'bg-primary' : 'bg-primary'}`}></div>}
-                         </button>
-                       );
-                    }
-                    return days;
-                 })()}
-              </div>
-           </div>
-        )}
-
-        {/* YEAR VIEW */}
-        {calendarView === 'year' && (
-           <div className="grid grid-cols-4 gap-2">
-              {Array.from({ length: 12 }).map((_, i) => {
-                 const monthDate = new Date(currentYear, i, 1);
-                 // Check if any activity in this month
-                 const hasActivityInMonth = clubActivities.some(a => {
-                    const d = new Date(a.date);
-                    return d.getFullYear() === currentYear && d.getMonth() === i;
-                 });
-                 const isCurrentMonth = i === currentMonth;
-
-                 return (
-                    <button
-                      key={i}
-                      onClick={() => {
-                         setCalendarDate(new Date(currentYear, i, 1));
-                         setCalendarView('month');
-                      }}
-                      className={`py-3 rounded-xl text-sm font-bold transition-all border relative ${
-                         isCurrentMonth
-                         ? 'border-gray-900 dark:border-gray-400 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white'
-                         : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
-                      }`}
-                    >
-                       {i + 1}月
-                       {hasActivityInMonth && <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full"></div>}
-                    </button>
-                 );
-              })}
-           </div>
-        )}
-      </div>
-    );
-  };
-
   const selectedDateActivities = clubActivities.filter(a => a.date === selectedDate);
   const otherActivities = clubActivities.filter(a => a.date !== selectedDate);
 
@@ -819,9 +622,12 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
         {activeTab === 'activities' && (
           <div className="space-y-6">
             {/* Calendar Component */}
-            <div>
-               {renderCalendar()}
-            </div>
+            <CalendarPicker
+              activeDates={clubActivities.map((a: Activity) => a.date)}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              showViewSwitcher={true}
+            />
 
             {/* Selected Date Activities */}
             <div>

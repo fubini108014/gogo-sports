@@ -25,22 +25,53 @@ const ActivityList: React.FC<ActivityListProps> = ({
     isLoading
   );
 
+  const formatDividerDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const weekDay = weekDays[d.getDay()];
+      return `${month}月${day}日 (${weekDay})`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  let lastDate = '';
+
   return (
     <div className="animate-fade-in pb-10">
       {/* Activity Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6 sm:gap-x-6">
         {isLoading ? (
           Array.from({ length: 6 }).map((_, i) => <ActivityCardSkeleton key={i} variant="compact" />)
         ) : activities.length > 0 ? (
-          activities.slice(0, displayCount).map(activity => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              onClick={() => onActivityClick(activity)}
-              searchQuery={searchTerm}
-              variant="compact"
-            />
-          ))
+          activities.slice(0, displayCount).map((activity, index) => {
+            const currentDate = activity.date;
+            const showDivider = currentDate !== lastDate;
+            lastDate = currentDate;
+
+            return (
+              <React.Fragment key={activity.id}>
+                {showDivider && (
+                  <div className="col-span-full flex items-center gap-4 pt-8 pb-4">
+                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800"></div>
+                    <span className="flex-shrink-0 text-[11px] font-black text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 px-4 py-1.5 rounded-full border border-gray-100 dark:border-gray-800 shadow-sm tracking-widest uppercase">
+                      {formatDividerDate(currentDate)}
+                    </span>
+                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800"></div>
+                  </div>
+                )}
+                <ActivityCard
+                  activity={activity}
+                  onClick={() => onActivityClick(activity)}
+                  searchQuery={searchTerm}
+                  variant="compact"
+                />
+              </React.Fragment>
+            );
+          })
         ) : (
           <div className="col-span-full text-center py-20">
             <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
