@@ -163,19 +163,25 @@ const ActivityListPage: React.FC = () => {
       params.cities = advancedFilters.cities.join(',');
     }
     
+    const toISO = (d: Date) => {
+      const offset = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - offset * 60 * 1000);
+      return local.toISOString().split('T')[0];
+    };
+
     if (advancedFilters.date) {
-      params.date = advancedFilters.date;
+      // Fetch 7 days starting from selected date
+      const start = new Date(advancedFilters.date);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 7);
+      
+      params.startDate = toISO(start);
+      params.endDate = toISO(end);
     } else {
       // Default: Today and next 7 days
       const today = new Date();
       const end = new Date();
       end.setDate(today.getDate() + 7);
-      
-      const toISO = (d: Date) => {
-        const offset = d.getTimezoneOffset();
-        const local = new Date(d.getTime() - offset * 60 * 1000);
-        return local.toISOString().split('T')[0];
-      };
       
       params.startDate = toISO(today);
       params.endDate = toISO(end);
@@ -222,14 +228,37 @@ const ActivityListPage: React.FC = () => {
     advancedFilters.subCategories.length > 0,
   ].filter(Boolean).length;
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const handleResetFilters = () => {
     setSearchTerm('');
     setConfirmedSearch('');
-    setAdvancedFilters(DEFAULT_FILTER_STATE);
+    
+    // Reset to today starting 7 days
+    const today = new Date();
+    const offset = today.getTimezoneOffset();
+    const local = new Date(today.getTime() - offset * 60 * 1000);
+    const dateStr = local.toISOString().split('T')[0];
+    
+    setAdvancedFilters({ ...DEFAULT_FILTER_STATE, date: dateStr });
   };
 
   const handleSearchTrigger = () => {
     setConfirmedSearch(searchTerm);
+  };
+
+  const handleCheckNextWeek = () => {
+    const baseDate = advancedFilters.date ? new Date(advancedFilters.date) : new Date();
+    const nextWeek = new Date(baseDate);
+    nextWeek.setDate(baseDate.getDate() + 7);
+    
+    const toISO = (d: Date) => {
+      const offset = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - offset * 60 * 1000);
+      return local.toISOString().split('T')[0];
+    };
+    
+    setAdvancedFilters({ ...advancedFilters, date: toISO(nextWeek) });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -239,15 +268,14 @@ const ActivityListPage: React.FC = () => {
   };
 
   const handleDateSelect = (date: string) => {
-    // If selecting same date, toggle it off
-    const newDate = advancedFilters.date === date ? '' : date;
-    setAdvancedFilters({ ...advancedFilters, date: newDate });
+    // Always keep a date selected, just switch if different
+    setAdvancedFilters({ ...advancedFilters, date });
   };
 
   return (
-    <div className="animate-fade-in px-4 pt-6 pb-20">
+    <div className="animate-fade-in px-4 pt-4 pb-20">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-2">
         <button
           onClick={() => navigate(-1)}
           className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
@@ -260,9 +288,15 @@ const ActivityListPage: React.FC = () => {
       </div>
 
       {/* Sticky filter bar */}
-      <div className="sticky top-[60px] z-30 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md -mx-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shadow-sm">
+      <div className="sticky top-[60px] z-30 -mx-4 px-4 py-3 relative group">
+        {/* Background Layer with Shadow and Blur */}
+        <div className="absolute inset-0 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md shadow-sm -z-10" />
+        
+        {/* Bottom Gradient Overlay (Integrated but at the bottom of this stacking context) */}
+        <div className="absolute left-0 right-0 -bottom-10 h-10 bg-gradient-to-b from-gray-50/95 via-gray-50/70 to-transparent dark:from-gray-900/95 dark:via-gray-900/70 pointer-events-none -z-10" />
+
         {/* Search + filter button */}
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2 mb-3 relative z-20">
           <div className="relative flex-1 group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search size={18} className="text-gray-400 dark:text-gray-500 group-focus-within:text-primary transition-colors" />
@@ -312,7 +346,7 @@ const ActivityListPage: React.FC = () => {
         </div>
 
         {/* Filter Summary & View Toggle */}
-        <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-800/50 mt-1 gap-3">
+        <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-800/50 mt-1 gap-3 relative z-10">
           {/* Scrollable container for Chips */}
           <div className="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
             {/* Loading state indicator */}
@@ -325,17 +359,6 @@ const ActivityListPage: React.FC = () => {
             {/* Filter Chips */}
             {!isFilterOpen && (
               <div className="flex gap-2 items-center flex-shrink-0">
-                {advancedFilters.date && (
-                  <span className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-primary text-white px-3 py-1 rounded-full font-bold">
-                    📅 {advancedFilters.date}
-                    <button 
-                      onClick={() => setAdvancedFilters({...advancedFilters, date: ''})} 
-                      className="hover:text-gray-200"
-                    >
-                      <X size={10} />
-                    </button>
-                  </span>
-                )}
                 {confirmedSearch && (
                   <span className="flex-shrink-0 flex items-center gap-1 text-[10px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full font-bold">
                     關鍵字: {confirmedSearch}
@@ -421,14 +444,20 @@ const ActivityListPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Clear All Button */}
-            {(activeFilterCount > 0 || advancedFilters.date || searchTerm) && (
+            {/* Clear All / Back to Today Button */}
+            {(activeFilterCount > 0 || (advancedFilters.date && advancedFilters.date !== todayStr) || confirmedSearch) && (
               <button 
                 onClick={handleResetFilters} 
-                className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] sm:text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors font-bold whitespace-nowrap"
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-[10px] sm:text-xs rounded-xl transition-colors font-bold whitespace-nowrap ${
+                  activeFilterCount > 0 || confirmedSearch
+                    ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                    : 'text-primary hover:bg-primary/5'
+                }`}
               >
                 <RotateCcw size={13} />
-                <span>清除全部</span>
+                <span>
+                  {activeFilterCount > 0 || confirmedSearch ? '清除全部' : '回到今天'}
+                </span>
               </button>
             )}
 
@@ -459,14 +488,18 @@ const ActivityListPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Separate Sticky Gradient Overlay (Lower z-index than pills) */}
+      <div className="sticky top-[315px] z-10 -mx-4 h-10 bg-gradient-to-b from-gray-50 via-gray-50/70 to-transparent dark:from-gray-900 dark:via-gray-900/70 pointer-events-none" />
+
       {/* Content */}
-      <div className="mt-6">
+      <div className="mt-2">
         {viewMode === 'list' ? (
           <ActivityList
             activities={apiActivities}
             onActivityClick={handleActivityClick}
             searchTerm={confirmedSearch}
             isLoading={apiLoading}
+            onEmptyAction={handleCheckNextWeek}
           />
         ) : (
           <ActivityMap

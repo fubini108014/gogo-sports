@@ -1,34 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
+import React from 'react';
 import ClubProfile from '../components/club/ClubProfile';
-import { Club } from '../types';
-import { apiGetClub } from '../services/api';
+import { useClubProfile } from '../hooks/useClubProfile';
 
 const ClubProfilePage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const {
-    clubs, activities, user,
-    handleActivityClick, handleJoinClub, handleLeaveClub, addToast,
-  } = useAppContext();
-
-  const [fetchedClub, setFetchedClub] = useState<Club | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const clubFromContext = clubs.find(c => c.id === id);
-
-  useEffect(() => {
-    if (!clubFromContext && id) {
-      setLoading(true);
-      apiGetClub(id)
-        .then(c => setFetchedClub(c))
-        .catch(() => setFetchedClub(null))
-        .finally(() => setLoading(false));
-    }
-  }, [id, clubFromContext]);
-
-  const club = clubFromContext ?? fetchedClub;
+    club,
+    activities,
+    user,
+    loading,
+    handleActivityClick,
+    handleJoinClub,
+    handleLeaveClub,
+    addToast,
+    handleBack,
+    setFetchedClub,
+    navigate,
+  } = useClubProfile();
 
   if (loading) {
     return (
@@ -56,7 +43,7 @@ const ClubProfilePage: React.FC = () => {
     <ClubProfile
       club={club}
       activities={activities}
-      onBack={() => navigate(-1)}
+      onBack={handleBack}
       onActivityClick={handleActivityClick}
       joinedClubIds={user.joinedClubIds}
       managedClubIds={user.managedClubIds}

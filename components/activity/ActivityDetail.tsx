@@ -1,6 +1,8 @@
 import React from 'react';
 import { Activity, Club, RegistrationMode, ActivityStatus } from '../../types';
 import { ChevronLeft, MapPin, Calendar, Clock, DollarSign, Users, Zap, CheckCircle, Tag } from 'lucide-react';
+import ParticipantAvatars from '../ui/ParticipantAvatars';
+import SectionHeader from '../ui/SectionHeader';
 
 interface ActivityDetailProps {
   activity: Activity;
@@ -148,10 +150,11 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
 
         {/* Registration Status */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Users size={16} className="text-primary" />
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm">報名狀況</h3>
-          </div>
+          <SectionHeader
+            title="報名狀況"
+            icon={<Users size={16} />}
+            className="mb-3"
+          />
 
           {isLimited ? (
             <div>
@@ -176,21 +179,15 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
             </div>
           ) : (
             <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                      <img src={`https://picsum.photos/seed/${activity.id + i}/50/50`} className="w-full h-full object-cover" alt="" />
-                    </div>
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  已有 <span className="text-primary font-black">{totalCount}</span> 人參加
-                </span>
-              </div>
+              <ParticipantAvatars
+                activityId={activity.id}
+                count={totalCount}
+                size="lg"
+                className="mb-3"
+              />
               {activity.groups && activity.groups.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">可選組別</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">可選組別</p>
                   <div className="flex flex-wrap gap-2">
                     {activity.groups.map(group => (
                       <span
@@ -209,7 +206,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
 
         {/* Description */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">活動說明</h3>
+          <SectionHeader title="活動說明" className="mb-3" />
           <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-line">
             {activity.description}
           </p>
@@ -218,10 +215,11 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
         {/* Tags */}
         {activity.tags.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Tag size={15} className="text-gray-400 dark:text-gray-500" />
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm">標籤</h3>
-            </div>
+            <SectionHeader
+              title="標籤"
+              icon={<Tag size={15} className="text-gray-400 dark:text-gray-500" />}
+              className="mb-3"
+            />
             <div className="flex flex-wrap gap-2">
               {activity.tags.map(tag => (
                 <span

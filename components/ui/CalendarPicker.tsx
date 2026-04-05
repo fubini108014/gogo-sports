@@ -177,16 +177,44 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
                 const isToday = dateStr === todayStr;
                 const active = activeDateSet.has(dateStr);
 
+                // Check if date is within 7 days of selectedDate
+                let isInRange = false;
+                if (selectedDate) {
+                  const sel = new Date(selectedDate);
+                  const end = new Date(sel);
+                  end.setDate(sel.getDate() + 7);
+                  
+                  // Compare timestamps normalized to local midnight
+                  const dTime = new Date(date).setHours(0,0,0,0);
+                  const selTime = new Date(sel).setHours(0,0,0,0);
+                  const endTime = new Date(end).setHours(0,0,0,0);
+                  isInRange = dTime >= selTime && dTime < endTime;
+                } else if (isToday || date > new Date()) {
+                  // If no date selected, default range is today + 7
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  const end = new Date(today);
+                  end.setDate(today.getDate() + 7);
+                  const dTime = new Date(date).setHours(0,0,0,0);
+                  isInRange = dTime >= today.getTime() && dTime < end.getTime();
+                }
+
                 return (
                   <button
                     key={i}
                     onClick={() => onSelectDate?.(dateStr)}
-                    className="flex flex-col items-center justify-center py-1.5 transition-all"
+                    className={`flex flex-col items-center justify-center py-1.5 transition-all relative ${
+                      isInRange ? 'bg-primary/5 dark:bg-primary/10' : ''
+                    } ${
+                      isInRange && i === 0 ? 'rounded-l-xl' : ''
+                    } ${
+                      isInRange && i === 6 ? 'rounded-r-xl' : ''
+                    }`}
                   >
                     <span
-                      className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-semibold transition-all ${
+                      className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-semibold transition-all z-10 ${
                         isSelected
-                          ? 'bg-gray-900 dark:bg-gray-500 text-white shadow-md'
+                          ? 'bg-gray-900 dark:bg-primary text-white shadow-md'
                           : isToday
                           ? 'text-primary font-bold hover:bg-orange-50 dark:hover:bg-orange-900/20'
                           : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -262,16 +290,38 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
                 const isToday = dateStr === todayStr;
                 const active = activeDateSet.has(dateStr);
 
+                // Check range highlight (same logic as Week view)
+                let isInRange = false;
+                if (selectedDate) {
+                  const sel = new Date(selectedDate);
+                  const end = new Date(sel);
+                  end.setDate(sel.getDate() + 7);
+                  
+                  const dTime = new Date(date).setHours(0,0,0,0);
+                  const selTime = new Date(sel).setHours(0,0,0,0);
+                  const endTime = new Date(end).setHours(0,0,0,0);
+                  isInRange = dTime >= selTime && dTime < endTime;
+                } else if (isToday || date > new Date()) {
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  const end = new Date(today);
+                  end.setDate(today.getDate() + 7);
+                  const dTime = new Date(date).setHours(0,0,0,0);
+                  isInRange = dTime >= today.getTime() && dTime < end.getTime();
+                }
+
                 cells.push(
                   <button
                     key={i}
                     onClick={() => onSelectDate?.(dateStr)}
-                    className="flex flex-col items-center justify-center py-0.5"
+                    className={`flex flex-col items-center justify-center py-0.5 relative ${
+                      isInRange ? 'bg-primary/5 dark:bg-primary/10' : ''
+                    }`}
                   >
                     <span
-                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-semibold transition-all ${
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-semibold transition-all z-10 ${
                         isSelected
-                          ? 'bg-gray-900 dark:bg-gray-500 text-white shadow-md'
+                          ? 'bg-gray-900 dark:bg-primary text-white shadow-md'
                           : isToday
                           ? 'text-primary font-bold hover:bg-orange-50 dark:hover:bg-orange-900/20'
                           : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'

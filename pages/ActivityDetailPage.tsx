@@ -1,34 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
+import React from 'react';
 import ActivityDetail from '../components/activity/ActivityDetail';
 import ActivityMap from '../components/activity/ActivityMap';
-import { Activity } from '../types';
-import { apiGetActivity } from '../services/api';
+import { useActivityDetail } from '../hooks/useActivityDetail';
 
 const ActivityDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { activities, clubs, myActivityIds, setSelectedActivity, setIsRegistrationOpen } = useAppContext();
-
-  const [fetchedActivity, setFetchedActivity] = useState<Activity | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const activityFromContext = activities.find(a => a.id === id);
-
-  useEffect(() => {
-    if (!activityFromContext && id) {
-      setLoading(true);
-      apiGetActivity(id)
-        .then(a => setFetchedActivity(a))
-        .catch(() => setFetchedActivity(null))
-        .finally(() => setLoading(false));
-    }
-  }, [id, activityFromContext]);
-
-  const activity = activityFromContext ?? fetchedActivity;
-  const club = activity ? clubs.find(c => c.id === activity.clubId) : undefined;
-  const isRegistered = activity ? myActivityIds.includes(activity.id) : false;
+  const {
+    activity,
+    club,
+    isRegistered,
+    loading,
+    handleRegisterClick,
+    handleBack,
+    handleClubClick,
+    navigate,
+  } = useActivityDetail();
 
   if (loading) {
     return (
@@ -52,20 +37,15 @@ const ActivityDetailPage: React.FC = () => {
     );
   }
 
-  const handleRegisterClick = () => {
-    setSelectedActivity(activity);
-    setIsRegistrationOpen(true);
-  };
-
   return (
     <div>
       <ActivityDetail
         activity={activity}
         club={club}
         isRegistered={isRegistered}
-        onBack={() => navigate(-1)}
+        onBack={handleBack}
         onRegisterClick={handleRegisterClick}
-        onClubClick={(clubId) => navigate(`/clubs/${clubId}`)}
+        onClubClick={handleClubClick}
       />
       {/* Map section rendered below ActivityDetail */}
       {activity.lat != null && activity.lng != null && (

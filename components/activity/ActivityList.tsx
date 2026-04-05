@@ -11,6 +11,7 @@ interface ActivityListProps {
   onActivityClick: (activity: Activity) => void;
   searchTerm?: string;
   isLoading?: boolean;
+  onEmptyAction?: () => void;
 }
 
 const ActivityList: React.FC<ActivityListProps> = ({
@@ -18,6 +19,7 @@ const ActivityList: React.FC<ActivityListProps> = ({
   onActivityClick,
   searchTerm = '',
   isLoading: externalLoading,
+  onEmptyAction,
 }) => {
   const isLoading = useSkeletonLoading(externalLoading);
   const { displayCount, isMoreLoading, sentinelRef } = useInfiniteScroll(
@@ -38,46 +40,82 @@ const ActivityList: React.FC<ActivityListProps> = ({
     }
   };
 
-  let lastDate = '';
+  const lastDateRef = React.useRef<string>('');
 
   return (
     <div className="animate-fade-in pb-10">
       {/* Activity Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6 sm:gap-x-6">
+      <div className="space-y-8">
         {isLoading ? (
-          Array.from({ length: 6 }).map((_, i) => <ActivityCardSkeleton key={i} variant="compact" />)
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6 sm:gap-x-6">
+            {Array.from({ length: 6 }).map((_, i) => <ActivityCardSkeleton key={i} variant="compact" />)}
+          </div>
         ) : activities.length > 0 ? (
-          activities.slice(0, displayCount).map((activity, index) => {
-            const currentDate = activity.date;
-            const showDivider = currentDate !== lastDate;
-            lastDate = currentDate;
+          (() => {
+            let lastDate = '';
+            const groups: { date: string; items: Activity[] }[] = [];
+            
+            // Group activities by date
+            activities.slice(0, displayCount).forEach(activity => {
+              if (activity.date !== lastDate) {
+                lastDate = activity.date;
+                groups.push({ date: lastDate, items: [activity] });
+              } else {
+                groups[groups.length - 1].items.push(activity);
+              }
+            });
 
-            return (
-              <React.Fragment key={activity.id}>
-                {showDivider && (
-                  <div className="col-span-full flex items-center gap-4 pt-8 pb-4">
-                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800"></div>
-                    <span className="flex-shrink-0 text-[11px] font-black text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 px-4 py-1.5 rounded-full border border-gray-100 dark:border-gray-800 shadow-sm tracking-widest uppercase">
-                      {formatDividerDate(currentDate)}
+            return groups.map((group, groupIndex) => (
+              <div key={group.date} className="relative">
+                {/* Sticky Date Floating Pill */}
+                <div className="sticky top-[310px] z-[40] flex justify-center mb-6 pointer-events-none">
+                  <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-md px-4 py-1.5 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 flex items-center gap-3 pointer-events-auto">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                    <span className="text-xs font-black text-gray-900 dark:text-white tracking-tight">
+                      {formatDividerDate(group.date)}
                     </span>
-                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800"></div>
+                    {group.date === new Date().toISOString().split('T')[0] && (
+                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                        Today
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 border-l border-gray-100 dark:border-gray-700 pl-3 ml-1 uppercase tracking-widest">
+                      {group.items.length} 
+                    </span>
                   </div>
-                )}
-                <ActivityCard
-                  activity={activity}
-                  onClick={() => onActivityClick(activity)}
-                  searchQuery={searchTerm}
-                  variant="compact"
-                />
-              </React.Fragment>
-            );
-          })
+                </div>
+
+                {/* Cards Grid for this date */}
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6 sm:gap-x-6 px-0 mt-2">
+                  {group.items.map((activity) => (
+                    <ActivityCard
+                      key={activity.id}
+                      activity={activity}
+                      onClick={() => onActivityClick(activity)}
+                      searchQuery={searchTerm}
+                      variant="compact"
+                    />
+                  ))}
+                </div>
+              </div>
+            ));
+          })()
         ) : (
-          <div className="col-span-full text-center py-20">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Filter size={24} className="text-gray-400 dark:text-gray-500" />
+          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="w-16 h-16 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Filter size={24} className="text-gray-300 dark:text-gray-500" />
             </div>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">沒有符合條件的活動</p>
+            <p className="text-gray-500 dark:text-gray-400 font-bold">目前 7 天內暫無符合的活動</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-6">要不要看看下週的活動？</p>
+            
+            {onEmptyAction && (
+              <button 
+                onClick={onEmptyAction}
+                className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary-dark transition-all shadow-md active:scale-95 flex items-center gap-2 mx-auto"
+              >
+                查看下週 (+7 天)
+              </button>
+            )}
           </div>
         )}
       </div>

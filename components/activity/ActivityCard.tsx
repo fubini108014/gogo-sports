@@ -1,6 +1,7 @@
 import React from 'react';
-import { Activity, RegistrationMode, ActivityStatus } from '../../types';
-import { MapPin, Calendar, User, Zap } from 'lucide-react';
+import { Activity, RegistrationMode } from '../../types';
+import { MapPin, Calendar, Zap } from 'lucide-react';
+import ParticipantAvatars from '../ui/ParticipantAvatars';
 
 interface ActivityCardProps {
   activity: Activity;
@@ -98,18 +99,12 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
               </div>
             </div>
           ) : (
-             <div className="flex items-center gap-2">
-                <div className={`flex ${isCompact ? '-space-x-1.5' : '-space-x-2'}`}>
-                  {[1,2,3].map(i => (
-                    <div key={i} className={`rounded-full border-2 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-700 overflow-hidden ${isCompact ? 'w-5 h-5' : 'w-6 h-6'}`}>
-                       <img src={`https://picsum.photos/seed/${activity.id + i}/50/50`} className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                </div>
-                <span className={`${isCompact ? 'text-[9px]' : 'text-xs'} text-gray-600 dark:text-gray-300 font-medium`}>
-                   <span className="text-primary font-bold">{totalCount}</span> 人已參加
-                </span>
-             </div>
+            <ParticipantAvatars
+              activityId={activity.id}
+              count={totalCount}
+              size={isCompact ? 'sm' : 'md'}
+              maxDisplay={3}
+            />
           )}
         </div>
       </div>

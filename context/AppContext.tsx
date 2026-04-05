@@ -70,6 +70,16 @@ interface AppContextType {
   isRegistrationOpen: boolean;
   setIsRegistrationOpen: (v: boolean) => void;
 
+  // Create modals state
+  isCreateMenuOpen: boolean;
+  setIsCreateMenuOpen: (v: boolean) => void;
+  isPostModalOpen: boolean;
+  setIsPostModalOpen: (v: boolean) => void;
+  isCreateActivityOpen: boolean;
+  setIsCreateActivityOpen: (v: boolean) => void;
+  isCreateClubOpen: boolean;
+  setIsCreateClubOpen: (v: boolean) => void;
+
   // Settings modal state
   isSettingsOpen: boolean;
   setIsSettingsOpen: (v: boolean) => void;
@@ -169,12 +179,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
 
+  // Creation modals
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [isCreateActivityOpen, setIsCreateActivityOpen] = useState(false);
+  const [isCreateClubOpen, setIsCreateClubOpen] = useState(false);
+
   // Settings modal
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Activity filter
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [advancedFilters, setAdvancedFilters] = useState<FilterState>(DEFAULT_FILTER_STATE);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterState>(() => {
+    const today = new Date();
+    const offset = today.getTimezoneOffset();
+    const local = new Date(today.getTime() - offset * 60 * 1000);
+    const dateStr = local.toISOString().split('T')[0];
+    return { ...DEFAULT_FILTER_STATE, date: dateStr };
+  });
 
   // Explore Tags
   const [exploreTags, setExploreTags] = useState<ExploreTag[]>(() => loadExploreTagsFromStorage());
@@ -471,6 +493,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       darkMode, setDarkMode,
       selectedActivity, setSelectedActivity,
       isRegistrationOpen, setIsRegistrationOpen,
+      isCreateMenuOpen, setIsCreateMenuOpen,
+      isPostModalOpen, setIsPostModalOpen,
+      isCreateActivityOpen, setIsCreateActivityOpen,
+      isCreateClubOpen, setIsCreateClubOpen,
       isSettingsOpen, setIsSettingsOpen,
       isFilterOpen, setIsFilterOpen,
       advancedFilters, setAdvancedFilters,

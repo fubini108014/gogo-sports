@@ -1,75 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Bell, Plus, Home, Users, MessageSquare, Compass } from 'lucide-react';
-import { SPORTS_HIERARCHY } from '../constants';
 import { useAppContext } from '../context/AppContext';
-import { DEFAULT_FILTER_STATE } from '../types';
-import CreateMenuModal from './modals/CreateMenuModal';
-import CreatePostModal from './modals/CreatePostModal';
-import CreateActivityModal from './modals/CreateActivityModal';
-import CreateClubModal from './modals/CreateClubModal';
-import RegistrationModal from './modals/RegistrationModal';
-import SettingsModal from './modals/SettingsModal';
-import ActivityFilterDrawer from './activity/ActivityFilterDrawer';
-import SportCategoryModal from './modals/SportCategoryModal';
-import AuthModal from './modals/AuthModal';
-import DateSelectModal from './modals/DateSelectModal';
-import ExploreTagManagerModal from './modals/ExploreTagManagerModal';
-import LocationMapModal from './modals/LocationMapModal';
 import NavItem from './ui/NavItem';
-import Toast from './ui/Toast';
+import ModalManager from './modals/ModalManager';
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const {
-    activities, user, clubs, notifications,
-    toasts,
-    isLoggedIn, isAuthModalOpen, setIsAuthModalOpen,
-    handleLogin, handleRegister,
-    selectedActivity, isRegistrationOpen, setIsRegistrationOpen,
-    isSettingsOpen, setIsSettingsOpen,
-    isFilterOpen, setIsFilterOpen,
-    advancedFilters, setAdvancedFilters,
-    isMapOpen, setIsMapOpen,
-    isCategoryOpen, setIsCategoryOpen,
-    homeLocations, homeSubCategories,
-    setHomeLocations, setHomeMainCategories, setHomeSubCategories,
-    darkMode, setDarkMode,
-    handleRegistrationConfirm,
-    handleCreatePost, handleCreateActivity, handleCreateClub,
-    addToast,
-    exploreTags, saveExploreTags, isExploreManagerOpen, setIsExploreManagerOpen,
-    isDateSelectModalOpen, setIsDateSelectModalOpen, selectedCalendarDate, setSelectedCalendarDate,
+    user, notifications,
+    isLoggedIn, setIsAuthModalOpen,
+    setIsCreateMenuOpen,
   } = useAppContext();
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
-  const managedClubs = clubs.filter(c => user.managedClubIds.includes(c.id));
-
-  // Create modal state (Layout-local)
-  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
-  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
-  const [isCreateActivityOpen, setIsCreateActivityOpen] = useState(false);
-  const [isCreateClubOpen, setIsCreateClubOpen] = useState(false);
-
-  const handleCreateAction = (action: 'ACTIVITY' | 'CLUB' | 'POST') => {
-    setIsCreateMenuOpen(false);
-    if (action === 'POST') {
-      // Post requires club context — guide user to their club
-      if (managedClubs.length > 0) {
-        navigate(`/clubs/${managedClubs[0].id}`);
-        addToast('請在社團頁面中發布貼文', 'info');
-      } else {
-        setIsPostModalOpen(true);
-      }
-    } else if (action === 'ACTIVITY') setIsCreateActivityOpen(true);
-    else if (action === 'CLUB') setIsCreateClubOpen(true);
-  };
-
-  const onCreatePost = (content: string) => {
-    handleCreatePost(content);
-    setIsPostModalOpen(false);
-  };
 
   const navItemsLeft = [
     { icon: Home, label: '首頁', path: '/' },
@@ -234,110 +179,8 @@ const Layout: React.FC = () => {
         </div>
       </div>
 
-      {/* Modals */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-      />
-
-      {selectedActivity && (
-        <RegistrationModal
-          activity={selectedActivity}
-          isOpen={isRegistrationOpen}
-          onClose={() => setIsRegistrationOpen(false)}
-          onConfirm={handleRegistrationConfirm}
-        />
-      )}
-
-      <CreateMenuModal
-        isOpen={isCreateMenuOpen}
-        onClose={() => setIsCreateMenuOpen(false)}
-        onSelectAction={handleCreateAction}
-      />
-
-      <CreatePostModal
-        isOpen={isPostModalOpen}
-        onClose={() => setIsPostModalOpen(false)}
-        onPost={onCreatePost}
-      />
-
-      <CreateActivityModal
-        isOpen={isCreateActivityOpen}
-        onClose={() => setIsCreateActivityOpen(false)}
-        onCreate={handleCreateActivity}
-        managedClubs={managedClubs}
-      />
-
-      <CreateClubModal
-        isOpen={isCreateClubOpen}
-        onClose={() => setIsCreateClubOpen(false)}
-        onCreate={handleCreateClub}
-      />
-
-      {/* Home Location Modal */}
-      <LocationMapModal
-        isOpen={isMapOpen}
-        onClose={() => setIsMapOpen(false)}
-        selectedLocations={homeLocations}
-        onSelect={setHomeLocations}
-      />
-
-      {/* Home Category Sidebar */}
-      <SportCategoryModal
-        isOpen={isCategoryOpen}
-        onClose={() => setIsCategoryOpen(false)}
-        initialSelected={homeSubCategories}
-        onConfirm={(selected) => {
-          setHomeSubCategories(selected);
-          
-          // Derive main categories from selected sub-categories
-          if (selected.length > 0) {
-            const derivedMain = SPORTS_HIERARCHY.filter(cat => 
-              cat.items.some(item => selected.includes(item))
-            ).map(cat => cat.name);
-            setHomeMainCategories(derivedMain.length > 0 ? derivedMain : ['所有運動']);
-          } else {
-            setHomeMainCategories(['所有運動']);
-          }
-          
-          setIsCategoryOpen(false);
-        }}
-        title="選擇運動類型"
-      />
-
-      <ActivityFilterDrawer
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-        currentFilters={advancedFilters}
-        onApply={setAdvancedFilters}
-        onReset={() => setAdvancedFilters(DEFAULT_FILTER_STATE)}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        darkMode={darkMode}
-        onDarkModeToggle={() => setDarkMode(!darkMode)}
-      />
-
-      <ExploreTagManagerModal
-        isOpen={isExploreManagerOpen}
-        onClose={() => setIsExploreManagerOpen(false)}
-        exploreTags={exploreTags}
-        onSave={saveExploreTags}
-      />
-
-      <DateSelectModal
-        isOpen={isDateSelectModalOpen}
-        onClose={() => setIsDateSelectModalOpen(false)}
-        currentDate={selectedCalendarDate}
-        onSelectDate={setSelectedCalendarDate}
-        activeDates={activities.map(a => a.date)}
-      />
-
-      <Toast toasts={toasts} />
+      {/* Unified Modal Management */}
+      <ModalManager />
     </div>
   );
 };
