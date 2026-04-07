@@ -35,27 +35,27 @@
 | Load More vs 自動滾動 | 使用手動按鈕，非 IntersectionObserver |
 | 圖片 Lazy Loading | 列表圖片未使用 `loading="lazy"`，首次載入效能較差 |
 
-## 7.5 程式碼 TODO
+## 7.6 未來擴充規劃 (Tier 4)
 
-主要集中於：
-- `ExploreTagManagerModal.tsx`：拖曳後端同步邏輯
-- `services/api.ts`：部分 mapper 欄位未完整（`bio`、`phone`）
-- `ClubProfile.tsx`：相簿佔位實作
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| 地圖標記聚合 | 使用 Leaflet.markercluster 實作分群聚合，解決同場地多活動重疊問題 | 待實作 |
+| WebSocket 預留 | 後端 API 需預留 Socket.io 事件觸發，前端 Hook 需預留即時更新介面 | 規劃中 |
+| 圖片自動優化 | 上傳後由後端/CDN 自動轉為 WebP 並產生三種尺寸（Original, Medium, Thumbnail） | 待實作 |
+| 多國語系 | 暫僅支援繁體中文，語法結構保留 i18n 遷移空間 | 已確認 |
 
 ---
 
-## 8. 設計決策
+## 8. 設計決策 (Updated)
 
 | # | 項目 | 決定 |
 |---|------|------|
-| 1 | 即時通訊 | Polling 每 5 秒，v1 不用 WebSocket |
+| 1 | 即時通訊 | v1 Polling 每 5 秒，後端預留 WebSocket 事件鉤子 |
 | 2 | 訊息圖片 | v1 純文字，圖片列未來版本 |
-| 3 | 已讀回執 | 未來版本 |
-| 4 | 刪除確認 | 統一確認 Modal，禁用 `confirm()` |
-| 5 | 篩選持久化 | 同步至 URL query string（`useSearchParams`，`replace: true`） |
-| 6 | API 錯誤格式 | `{code, message}` |
-| 7 | 圖片上傳限制 | ≤10MB，JPG/PNG/WebP，前後端均驗證 |
-| 8 | 圖片儲存 | v1 本地 `uploads/`，未來遷移雲端（不影響 API 介面） |
+| 3 | 圖片壓縮 | 統一轉 WebP，限制 ≤10MB，前端上傳前先行預縮圖 (可選) |
+| 4 | 地圖互動 | 點擊標記聚合圈展開，點擊單一標記顯示 Popup |
+| 5 | 報名遞補 | 方案 A：有人取消時，系統依報名順序自動遞補 `WAITLISTED` 者 |
+| 6 | 懲罰機制 | 惡意缺席者由主揪手動標記，扣除 XP (不可回復) |
 
 ### URL 篩選參數（/activities）
 

@@ -2,34 +2,55 @@
 
 ## Enums
 
+### PrimarySport
+| 值 | 顯示名稱 |
+|----|------|
+| `BADMINTON` | 羽球 |
+| `VOLLEYBALL` | 排球 |
+| `BASKETBALL` | 籃球 |
+| `TABLE_TENNIS` | 桌球 |
+| `TENNIS` | 網球 |
+| `PICKLEBALL` | 匹克球 |
+| `HIKING` | 登山 |
+| `RUNNING` | 路跑 |
+| `OTHER` | 其他 |
+
 ### RegistrationMode
 | 值 | 說明 |
 |----|------|
 | `LIMITED` | 固定名額制（羽球、籃球），有 `maxParticipants` 上限 |
 | `OPEN` | 開放分組制（登山、跑步），依組別報名 |
 
+### ApprovalMode
+| 值 | 說明 |
+|----|------|
+| `AUTO` | 自動接受：報名即成功（有名額時） |
+| `MANUAL` | 手動審核：需主揪同意，審核中不佔名額 |
+
 ### ActivityStatus
 | 值 | 顯示 | 說明 |
 |----|------|------|
 | `OPEN` | 報名中 | 開放報名 |
-| `FULL` | 已額滿 | 可候補 |
+| `FULL` | 已額滿 | 依然可以報名（進入候補） |
 | `CANCELLED` | 已取消 | — |
-| `ENDED` | 已結束 | — |
+| `ENDED` | 已結束 | 日期過後自動轉變，觸發 XP 發放 |
 
-### Level
-| 值 | 顯示 |
-|----|------|
-| `BEGINNER` | 新手友善 |
-| `INTERMEDIATE` | 中階 |
-| `ADVANCED` | 高階 |
-| `PRO` | 專業 |
+### RegistrationStatus
+| 值 | 顯示 | 說明 |
+|----|------|------|
+| `PENDING` | 待審核 | MANUAL 模式初始狀態 |
+| `APPROVED` | 已通過 | 成功報名，佔用名額 |
+| `REJECTED` | 已婉拒 | 主揪拒絕，不佔名額 |
+| `WAITLISTED` | 候補中 | 額滿後報名或被主揪放入候補 |
+| `CANCELLED` | 已取消 | 使用者自行取消 |
+| `ABSENT` | 未出席 | 活動結束後由主揪標記，扣除 XP |
 
 ### PostType
 | 值 | 顯示 |
 |----|------|
 | `ANNOUNCEMENT` | 公告 |
 | `SHARE` | 閒聊 |
-| `PHOTO` | 相簿 |
+| `PHOTO` | 相簿 (上限 10 張) |
 
 ### NotificationType
 | 值 | 說明 |
@@ -38,53 +59,71 @@
 | `ACTIVITY` | 活動提醒/更新 |
 | `INTERACTION` | 貼文互動 |
 | `INVITE` | 社團邀請 |
+| `BROADCAST` | 主揪廣播 (含圖/地圖) |
 
-### ClubMemberRank
-| 值 | 稱號 | 門檻 | 徽章色 |
-|----|------|------|--------|
-| `NEWBIE` | 新手 🌱 | 0–2 次 | gray |
-| `REGULAR` | 熟手 ⚡ | 3–9 次 | blue |
-| `VETERAN` | 老手 🔥 | 10–19 次 | orange |
-| `VIP` | VIP 👑 | 20+ 次 | yellow |
-
-計算函式：`calcClubMemberRank(activityCount)` 在 `types.ts`。以**社團為單位**計算，等級僅供展示。
+### ReportReason
+| 值 | 說明 |
+|----|------|
+| `SPAM` | 垃圾訊息 / 廣告 |
+| `VIOLENCE` | 言語暴力 / 恐嚇 |
+| `INAPPROPRIATE_CONTENT` | 不當圖片 / 色情內容 |
+| `HARASSMENT` | 騷擾行為 |
+| `OTHER` | 其他 |
 
 ---
 
 ## 核心資料模型
 
+### Blacklist (主揪黑名單)
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `hostId` | string | 發起封鎖的人 |
+| `blockedUserId` | string | 被封鎖的人 |
+| `createdAt` | string | ISO |
+
+### Report (檢舉記錄)
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | string | — |
+| `reporterId` | string | 檢舉人 |
+| `targetType` | string | `USER`, `POST`, `MESSAGE` |
+| `targetId` | string | 被檢舉的 ID |
+| `reason` | ReportReason | 檢舉理由 |
+| `content` | string? | 補充說明 |
+| `status` | string | `PENDING`, `RESOLVED` |
+
+### ClubInviteLink (社團邀請連結)
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | string | — |
+| `clubId` | string | — |
+| `token` | string | 唯一的 URL token |
+| `expiresAt` | string | 過期時間 |
+| `requireApproval` | boolean | 透過連結加入是否仍須審核 |
+
 ### Activity
 | 欄位 | 型別 | 說明 |
 |------|------|------|
 | `id` | string | — |
-| `clubId` | string | 所屬社團 |
+| `hostId` | string | 主揪 User ID (必填) |
+| `clubId` | string? | 所屬社團 ID (選填，個人團為 null) |
 | `title` | string | — |
+| `primarySport` | PrimarySport | 主要運動分類 (用於稱號計算) |
 | `date` | string | YYYY-MM-DD |
 | `time` | string | HH:MM |
 | `location` | string | — |
+| `city` | string | — |
 | `price` | number | 0 = 免費 |
 | `mode` | RegistrationMode | — |
+| `approvalMode` | ApprovalMode | — |
 | `status` | ActivityStatus | — |
-| `maxParticipants` | number? | LIMITED |
-| `currentInternalCount` | number? | LIMITED，Line/FB 報名 |
-| `currentAppCount` | number | — |
-| `groups` | string[]? | OPEN，如「5分速」 |
+| `maxParticipants` | number? | LIMITED 模式上限 |
+| `currentAppCount` | number | 系統內已 APPROVED 的人數 |
+| `minCancelHours` | number | 活動前 X 小時禁止取消 (預設 24) |
+| `groups` | string[]? | OPEN 模式分組 |
 | `level` | Level | — |
-| `image` | string | URL |
 | `description` | string | — |
-| `tags` | string[] | — |
-| `lat` / `lng` | number? | 地圖座標 |
-
-### Club
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | string | — |
-| `name` | string | — |
-| `logo` | string | URL |
-| `rating` | number | 0–5 |
-| `membersCount` | number | — |
-| `description` | string | — |
-| `tags` | string[] | — |
+| `tags` | string[] | 額外標籤 |
 
 ### User
 | 欄位 | 型別 | 說明 |
@@ -92,10 +131,24 @@
 | `id` | string | — |
 | `name` | string | — |
 | `avatar` | string | URL |
-| `isClubAdmin` | boolean | — |
-| `registeredActivityIds` | string[] | — |
-| `joinedClubIds` | string[] | — |
+| `bio` | string | 個人簡介 |
+| `globalXP` | number | 全站總經驗值 |
+| `sportXP` | JSON | 各運動項目的經驗值 `{BADMINTON: 500, HIKING: 20}` |
 | `managedClubIds` | string[] | — |
+
+### Registration
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | string | — |
+| `userId` | string | — |
+| `activityId` | string | — |
+| `status` | RegistrationStatus | — |
+| `contactMethod` | string | 主揪聯繫方式 (Line ID, Phone 等) |
+| `realName` | string | 真實姓名 (保險/聯繫用) |
+| `group` | string? | OPEN 模式分組 |
+| `transportation` | string? | 交通方式 |
+| `createdAt` | string | ISO |
+
 
 ### ClubMember
 | 欄位 | 型別 | 說明 |

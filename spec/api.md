@@ -34,7 +34,8 @@
 | Method | 路徑 | 功能 | Body | Response |
 |--------|------|------|------|----------|
 | GET | `/users/me` | 取得使用者 | — | `User` |
-| PATCH | `/users/me` | 更新資料 | `{name?, bio?, phone?}` | `User` |
+| PATCH | `/users/me` | 更新資料 | `{name?, bio?, avatar?, phone?}` | `User` |
+| GET | `/users/me/titles` | 取得運動稱號 | — | `{titles: SportTitle[], globalRank, totalXP}` |
 | GET | `/users/me/explore-tags` | 取得探索標籤 | — | `ExploreTag[]` |
 | PUT | `/users/me/explore-tags` | 儲存探索標籤 | `{tags: ExploreTag[]}` | `void` |
 
@@ -44,11 +45,14 @@
 |--------|------|------|------------|----------|
 | GET | `/activities` | 列表 | `limit, search, cities, date, minPrice, maxPrice, levels, isNearlyFull, tags` | `{data: Activity[], pagination: {total}}` |
 | GET | `/activities/:id` | 詳情 | — | `Activity & {isRegistered}` |
-| POST | `/activities` | 建立 | `{title, date, time, location, price, mode, level, maxParticipants?, groups?, description, tags, image?}` | `Activity` |
+| POST | `/activities` | 建立 | `{title, primarySport, date, time, location, price, mode, approvalMode, level, maxParticipants?, minCancelHours?, groups?, description, tags, image?, clubId?}` | `Activity` |
+| PATCH | `/activities/:id` | 更新（主揪） | `{...ActivityPartial}` | `Activity` |
 | DELETE | `/activities/:id` | 刪除 | — | `204` |
-| POST | `/activities/:id/register` | 報名 | `{group?, transportMode?, realName, phone, emergencyContact, emergencyPhone}` | `void` |
+| POST | `/activities/:id/register` | 報名 | `{group?, contactMethod, realName, transportation?}` | `{registrationId, status}` |
 | DELETE | `/activities/:id/register` | 取消報名 | — | `void` |
-| GET | `/activities/:id/participants` | 報名者（管理員） | — | `[{id, userId, name, avatar, group?, registeredAt}]` |
+| GET | `/activities/:id/participants` | 報名者（主揪） | — | `[{id, userId, name, avatar, group?, status, contactMethod, registeredAt}]` |
+| PATCH | `/activities/:id/registrations/:regId` | 審核報名 | `{status: APPROVED|REJECTED|WAITLISTED}` | `Registration` |
+| POST | `/activities/:id/absent` | 標記缺席 | `{userId}` | `void` |
 
 ## 5.4 社團（/clubs）
 
