@@ -11,9 +11,26 @@ datasource db {
 // Enums
 // ─────────────────────────────────────────────
 
+enum PrimarySport {
+  BADMINTON
+  VOLLEYBALL
+  BASKETBALL
+  TABLE_TENNIS
+  TENNIS
+  PICKLEBALL
+  HIKING
+  RUNNING
+  OTHER
+}
+
 enum RegistrationMode {
   LIMITED
   OPEN
+}
+
+enum ApprovalMode {
+  AUTO
+  MANUAL
 }
 
 enum ActivityStatus {
@@ -24,9 +41,12 @@ enum ActivityStatus {
 }
 
 enum RegistrationStatus {
-  CONFIRMED
+  PENDING
+  APPROVED
+  REJECTED
   WAITLISTED
   CANCELLED
+  ABSENT
 }
 
 enum Level {
@@ -47,6 +67,20 @@ enum NotificationType {
   ACTIVITY
   INTERACTION
   INVITE
+  BROADCAST
+}
+
+enum ReportReason {
+  SPAM
+  VIOLENCE
+  INAPPROPRIATE_CONTENT
+  HARASSMENT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
 }
 
 // ─────────────────────────────────────────────
@@ -61,17 +95,30 @@ model User {
   phone        String?
   avatar       String?
   bio          String?
+  
+  // XP Systems
+  globalXP     Int      @default(0)
+  sportXP      Json     @default("{}") // Stores { "BADMINTON": 500, "HIKING": 20 }
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  registrations   Registration[]
-  clubMemberships ClubMember[]
-  clubAdminRoles  ClubAdmin[]
-  posts           Post[]
-  postLikes       PostLike[]
-  comments        Comment[]
-  notifications   Notification[]
-  refreshTokens   RefreshToken[]
+  // Relations
+  hostedActivities Activity[]     @relation("UserHostedActivities")
+  registrations    Registration[]
+  clubMemberships  ClubMember[]
+  clubAdminRoles   ClubAdmin[]
+  posts            Post[]
+  postLikes        PostLike[]
+  comments         Comment[]
+  notifications    Notification[]
+  refreshTokens    RefreshToken[]
+  
+  // Safety
+  reportsSent      Report[]       @relation("Reporter")
+  reportsReceived  Report[]       @relation("ReportTarget")
+  blacklist        Blacklist[]    @relation("Blocker")
+  blockedBy        Blacklist[]    @relation("Blocked")
 
   @@map("users")
 }
@@ -104,18 +151,20 @@ model Club {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  activities Activity[]
-  members    ClubMember[]
-  admins     ClubAdmin[]
-  posts      Post[]
+  activities  Activity[]
+  members     ClubMember[]
+  admins      ClubAdmin[]
+  posts       Post[]
+  inviteLinks ClubInviteLink[]
 
   @@map("clubs")
 }
 
 model ClubMember {
-  userId   String
-  clubId   String
-  joinedAt DateTime @default(now())
+  userId        String
+  clubId        String
+  joinedAt      DateTime @default(now())
+  activityCount Int      @default(0) // Contribution to this club
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
@@ -135,24 +184,40 @@ model ClubAdmin {
   @@map("club_admins")
 }
 
+model ClubInviteLink {
+  id              String   @id @default(cuid())
+  clubId          String
+  token           String   @unique
+  expiresAt       DateTime
+  requireApproval Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@map("club_invite_links")
+}
+
 // ─────────────────────────────────────────────
 // Activity
 // ─────────────────────────────────────────────
 
 model Activity {
-  id                   String         @id @default(cuid())
-  clubId               String
+  id                   String           @id @default(cuid())
+  hostId               String
+  clubId               String?          // Optional for personal activities
   title                String
+  primarySport         PrimarySport
   date                 DateTime
   time                 String
   location             String
   city                 String
-  price                Int
+  price                Int              @default(0)
   mode                 RegistrationMode
-  status               ActivityStatus @default(OPEN)
+  approvalMode         ApprovalMode     @default(AUTO)
+  status               ActivityStatus   @default(OPEN)
   maxParticipants      Int?
-  currentInternalCount Int            @default(0)
-  currentAppCount      Int            @default(0)
+  currentAppCount      Int              @default(0) // Count of APPROVED registrations
+  minCancelHours       Int              @default(24)
   groups               String[]
   level                Level
   image                String?
@@ -160,22 +225,31 @@ model Activity {
   tags                 String[]
   lat                  Float?
   lng                  Float?
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
-  club          Club           @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  host          User           @relation("UserHostedActivities", fields: [hostId], references: [id])
+  club          Club?          @relation(fields: [clubId], references: [id], onDelete: Cascade)
   registrations Registration[]
 
   @@map("activities")
 }
 
 model Registration {
-  id         String             @id @default(cuid())
-  userId     String
-  activityId String
-  group      String?
-  status     RegistrationStatus @default(CONFIRMED)
-  createdAt  DateTime           @default(now())
+  id             String             @id @default(cuid())
+  userId         String
+  activityId     String
+  status         RegistrationStatus @default(PENDING)
+  
+  // Logistics & Contact
+  contactMethod  String             // Line ID, Phone, etc.
+  realName       String
+  group          String?            // For OPEN mode
+  transportation String?            // driver, passenger, self
+  carCapacity    Int?               // If driver
+  
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
@@ -185,7 +259,40 @@ model Registration {
 }
 
 // ─────────────────────────────────────────────
-// Post & Comment
+// Safety & Social
+// ─────────────────────────────────────────────
+
+model Blacklist {
+  id            String   @id @default(cuid())
+  hostId        String   // Blocker
+  blockedUserId String   // Blocked
+  createdAt     DateTime @default(now())
+
+  host        User @relation("Blocker", fields: [hostId], references: [id], onDelete: Cascade)
+  blockedUser User @relation("Blocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([hostId, blockedUserId])
+  @@map("blacklist")
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  reporterId String
+  targetId   String       // User ID, Post ID, or Message ID
+  targetType String       // "USER", "POST", "MESSAGE"
+  reason     ReportReason
+  content    String?
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  reporter User @relation("Reporter", fields: [reporterId], references: [id])
+  target   User @relation("ReportTarget", fields: [targetId], references: [id]) // Assuming target is often a user
+
+  @@map("reports")
+}
+
+// ─────────────────────────────────────────────
+// Post, Comment, Notification
 // ─────────────────────────────────────────────
 
 model Post {
@@ -194,7 +301,7 @@ model Post {
   authorId  String
   type      PostType
   content   String
-  images    String[]
+  images    String[] // Max 10
   likes     Int      @default(0)
   comments  Int      @default(0)
   createdAt DateTime @default(now())
@@ -236,10 +343,6 @@ model Comment {
   @@map("comments")
 }
 
-// ─────────────────────────────────────────────
-// Notification
-// ─────────────────────────────────────────────
-
 model Notification {
   id        String           @id @default(cuid())
   userId    String
@@ -247,6 +350,12 @@ model Notification {
   title     String
   content   String
   isRead    Boolean          @default(false)
+  
+  // For Broadcasts/Rich Notifications
+  image     String?
+  lat       Float?
+  lng       Float?
+  
   linkId    String?
   linkType  String?
   createdAt DateTime         @default(now())

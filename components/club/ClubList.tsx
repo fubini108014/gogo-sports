@@ -5,6 +5,7 @@ import { SPORTS_HIERARCHY } from '../../constants';
 import { ClubCardSkeleton } from '../ui/Skeleton';
 import CategorySelector from '../home/CategorySelector';
 import { Search, ChevronLeft, Users, Star, Filter, ArrowUpDown, XCircle, Loader2 } from 'lucide-react';
+import ClubLogo from './ClubLogo';
 
 interface ClubListProps {
   clubs: Club[];
@@ -253,7 +254,7 @@ const ClubList: React.FC<ClubListProps> = ({ clubs, onClubClick, onBack }) => {
                 className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg hover:border-primary/20 transition-all cursor-pointer flex gap-4 items-start group"
               >
                 <div className="relative">
-                  <img src={club.logo} className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl bg-gray-100 dark:bg-gray-700 object-cover flex-shrink-0 ring-1 ring-gray-100 dark:ring-gray-700" alt={club.name} />
+                  <ClubLogo logo={club.logo} name={club.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover flex-shrink-0 ring-1 ring-gray-100 dark:ring-gray-700" />
                   {club.rating >= 4.8 && (
                     <div className="absolute -top-2 -left-2 bg-yellow-400 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
                       推薦
@@ -273,23 +274,23 @@ const ClubList: React.FC<ClubListProps> = ({ clubs, onClubClick, onBack }) => {
                     {club.description}
                   </p>
 
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50 dark:border-gray-700">
-                     <div className="flex items-center text-xs text-gray-400 dark:text-gray-500">
-                       <Users size={12} className="mr-1" />
-                       <span className="font-semibold text-gray-600 dark:text-gray-300 mr-0.5">{club.membersCount}</span> 成員
-                     </div>
-                     <div className="flex gap-1 overflow-hidden">
-                       {club.tags.slice(0, 2).map(tag => (
-                         <span key={tag} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] rounded font-medium whitespace-nowrap">
-                           #{tag}
-                         </span>
-                       ))}
-                       {club.tags.length > 2 && (
-                         <span className="px-1.5 py-0.5 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 text-[10px] rounded font-medium">
-                           +{club.tags.length - 2}
-                         </span>
-                       )}
-                     </div>
+                  <div className="mt-3 pt-3 border-t border-gray-50 dark:border-gray-700 space-y-1.5">
+                    <div className="flex gap-1 flex-wrap">
+                      {club.tags.slice(0, 3).map(tag => (
+                        <span key={tag} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] rounded font-medium whitespace-nowrap">
+                          #{tag}
+                        </span>
+                      ))}
+                      {club.tags.length > 3 && (
+                        <span className="px-1.5 py-0.5 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 text-[10px] rounded font-medium">
+                          +{club.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center text-xs text-gray-400 dark:text-gray-500">
+                      <Users size={12} className="mr-1" />
+                      <span className="font-semibold text-gray-600 dark:text-gray-300 mr-0.5">{club.membersCount}</span> 成員
+                    </div>
                   </div>
                 </div>
               </div>

@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database with high-quality images...')
 
-  // 1. 建立測試使用者 (使用更真實的運動風格頭像)
+  // 1. 建立測試使用者
   const passwordHash = await bcrypt.hash('password123', 12)
 
   const alex = await prisma.user.upsert({
@@ -45,7 +45,7 @@ async function main() {
     },
   })
 
-  // 2. 建立社團 (補全所有 logo 與 coverImage)
+  // 2. 建立社團
   const club1 = await prisma.club.upsert({
     where: { id: 'c1' },
     update: {},
@@ -107,8 +107,8 @@ async function main() {
   })
 
   // 3. 設定管理員與成員
-  const users = [alex, sarah, kevin];
-  const clubs = [club1, club2, club3, club4];
+  const users = [alex, sarah, kevin]
+  const clubs = [club1, club2, club3, club4]
 
   for (const club of clubs) {
     await prisma.clubAdmin.upsert({
@@ -125,15 +125,16 @@ async function main() {
     }
   }
 
-  // 4. 建立活動 (以 2026-04-05 為基準，補全所有活動圖片)
-  
+  // 4. 建立活動
   const activity1 = await prisma.activity.upsert({
     where: { id: 'a1' },
     update: {},
     create: {
       id: 'a1',
+      hostId: alex.id,
       clubId: club1.id,
       title: '週二晚間歡樂羽球 (含教練指導)',
+      primarySport: 'BADMINTON',
       date: new Date('2026-03-10'),
       time: '19:00 - 21:00',
       location: '台北市大同運動中心',
@@ -142,7 +143,6 @@ async function main() {
       mode: 'LIMITED',
       status: 'OPEN',
       maxParticipants: 16,
-      currentInternalCount: 4,
       currentAppCount: 8,
       level: 'INTERMEDIATE',
       image: 'https://images.unsplash.com/photo-1626224580194-860c3d317e9f?w=800&h=500&fit=crop',
@@ -158,8 +158,10 @@ async function main() {
     update: {},
     create: {
       id: 'a_past_1',
+      hostId: alex.id,
       clubId: club1.id,
       title: '3月羽球月賽 - 挑戰組',
+      primarySport: 'BADMINTON',
       date: new Date('2026-03-25'),
       time: '14:00 - 18:00',
       location: '中正運動中心',
@@ -181,8 +183,10 @@ async function main() {
     update: {},
     create: {
       id: 'a_now_1',
+      hostId: sarah.id,
       clubId: club2.id,
       title: '清明連假：陽明山縱走',
+      primarySport: 'HIKING',
       date: new Date('2026-04-04'),
       time: '08:00 - 16:00',
       location: '陽明山國家公園',
@@ -202,8 +206,10 @@ async function main() {
     update: {},
     create: {
       id: 'a_full_1',
+      hostId: alex.id,
       clubId: club1.id,
       title: '週二晚間歡樂羽球 (已額滿)',
+      primarySport: 'BADMINTON',
       date: new Date('2026-04-07'),
       time: '19:00 - 21:00',
       location: '台北市大同運動中心',
@@ -225,8 +231,10 @@ async function main() {
     update: {},
     create: {
       id: 'a_open_1',
+      hostId: sarah.id,
       clubId: club3.id,
       title: '週末網球新手交流賽',
+      primarySport: 'TENNIS',
       date: new Date('2026-04-11'),
       time: '09:00 - 12:00',
       location: '台中市網球場',
@@ -248,8 +256,10 @@ async function main() {
     update: {},
     create: {
       id: 'a_open_2',
+      hostId: kevin.id,
       clubId: club4.id,
       title: '河濱 5K 夜跑',
+      primarySport: 'RUNNING',
       date: new Date('2026-04-08'),
       time: '20:00 - 21:30',
       location: '大佳河濱公園',
@@ -269,8 +279,10 @@ async function main() {
     update: {},
     create: {
       id: 'a_far_1',
+      hostId: sarah.id,
       clubId: club2.id,
       title: '嘉明湖三日遊 (天使的眼淚)',
+      primarySport: 'HIKING',
       date: new Date('2026-05-15'),
       time: '06:00',
       location: '嘉明湖國家步道',
@@ -287,20 +299,32 @@ async function main() {
     },
   })
 
-  // 5. 報名記錄
+  // 5. 報名記錄（status: CONFIRMED → APPROVED，補上 contactMethod/realName）
   await prisma.registration.upsert({
     where: { userId_activityId: { userId: alex.id, activityId: activity1.id } },
     update: {},
-    create: { userId: alex.id, activityId: activity1.id, status: 'CONFIRMED' },
+    create: {
+      userId: alex.id,
+      activityId: activity1.id,
+      status: 'APPROVED',
+      contactMethod: 'Line: alex_chen',
+      realName: 'Alex Chen',
+    },
   })
 
   await prisma.registration.upsert({
-    where: { userId_activityId: { userId: alex.id, activityId: 'a_open_1' } },
+    where: { userId_activityId: { userId: alex.id, activityId: activity_new_1.id } },
     update: {},
-    create: { userId: alex.id, activityId: 'a_open_1', status: 'CONFIRMED' },
+    create: {
+      userId: alex.id,
+      activityId: activity_new_1.id,
+      status: 'APPROVED',
+      contactMethod: 'Line: alex_chen',
+      realName: 'Alex Chen',
+    },
   })
 
-  // 6. 貼文 (補全圖片並增加一則帶圖公告)
+  // 6. 貼文
   await prisma.post.upsert({
     where: { id: 'p1' },
     update: {},
@@ -359,8 +383,8 @@ async function main() {
     },
   })
 
-  console.log('Seed completed with beautiful images!')
-  console.log(`Test account: alex@example.com / password123`)
+  console.log('Seed completed!')
+  console.log('Test account: alex@example.com / password123')
 }
 
 main()

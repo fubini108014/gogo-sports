@@ -5,6 +5,7 @@ import ActivityCard from '../components/activity/ActivityCard';
 import HomeSearchBar from '../components/home/HomeSearchBar';
 import HomeSelectedTags from '../components/home/HomeSelectedTags';
 import ExploreTagsSection from '../components/home/ExploreTagsSection';
+import ClubLogo from '../components/club/ClubLogo';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -112,7 +113,7 @@ const HomePage: React.FC = () => {
                 onClick={() => handleClubClick(club.id)}
                 className="flex items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-50 dark:border-slate-700 hover:shadow-xl transition-all cursor-pointer group"
               >
-                <img src={club.logo} className="w-12 h-12 rounded-xl object-cover group-hover:rotate-3 transition-transform" alt={club.name} />
+                <ClubLogo logo={club.logo} name={club.name} className="w-12 h-12 rounded-xl object-cover group-hover:rotate-3 transition-transform" />
                 <div className="min-w-0">
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">{club.name}</h4>
                   <p className="text-[10px] text-slate-400 font-bold mt-1">★ {club.rating} ‧ {club.membersCount} 位成員</p>

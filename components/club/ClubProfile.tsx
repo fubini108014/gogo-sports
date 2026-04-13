@@ -6,6 +6,7 @@ import CalendarPicker from '../ui/CalendarPicker';
 import { MapPin, Users, Star, Calendar as CalendarIcon, Image as ImageIcon, ChevronRight, PenSquare, Heart, MessageSquare, ArrowUpDown, MoreHorizontal, Send, X, CornerDownRight, AlertTriangle, Edit2 } from 'lucide-react';
 import CreatePostModal from '../modals/CreatePostModal';
 import ClubManageModal from '../modals/ClubManageModal';
+import ClubLogo from './ClubLogo';
 import { useAppContext } from '../../context/AppContext';
 import { apiGetClubPosts, apiTogglePostLike, apiCreatePost, apiDeletePost, apiUpdatePost, apiGetPostComments, apiCreateComment, apiDeleteComment } from '../../services/api';
 
@@ -538,7 +539,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-start">
             <div className="flex gap-4">
-              <img src={currentClub.logo} alt={currentClub.name} className="w-20 h-20 rounded-xl border-4 border-white dark:border-gray-800 shadow-sm object-cover bg-gray-100 dark:bg-gray-700" />
+              <ClubLogo logo={currentClub.logo} name={currentClub.name} className="w-20 h-20 rounded-xl border-4 border-white dark:border-gray-800 shadow-sm object-cover" />
               <div className="pt-10 sm:pt-0">
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight mb-1">{currentClub.name}</h1>
                 <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 gap-3">

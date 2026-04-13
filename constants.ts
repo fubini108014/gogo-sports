@@ -158,7 +158,7 @@ export const MOCK_CLUBS: Club[] = [
   {
     id: 'c9',
     name: '桃園越野魂',
-    logo: 'https://picsum.photos/id/200/200',
+    logo: 'https://picsum.photos/id/200/200/200',
     rating: 4.8,
     membersCount: 300,
     description: '桃園近郊步道開發者，體驗腳下的每一寸土地。',

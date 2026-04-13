@@ -1,6 +1,7 @@
 import React from 'react';
 import { Club } from '../../types';
 import { ChevronRight, ShieldCheck } from 'lucide-react';
+import ClubLogo from './ClubLogo';
 
 interface ClubListItemProps {
   club: Club;
@@ -13,7 +14,7 @@ const ClubListItem: React.FC<ClubListItemProps> = ({ club, onClick, variant }) =
     onClick={onClick}
     className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
   >
-    <img src={club.logo} className="w-14 h-14 rounded-lg object-cover bg-gray-100 dark:bg-gray-700" alt={club.name} />
+    <ClubLogo logo={club.logo} name={club.name} className="w-14 h-14 rounded-lg object-cover" />
     <div className="flex-1">
       <h4 className="font-bold text-gray-900 dark:text-white">{club.name}</h4>
       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex gap-3">

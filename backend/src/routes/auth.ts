@@ -18,6 +18,13 @@ const loginSchema = z.object({
 
 const REFRESH_TOKEN_EXPIRES_DAYS = 30
 
+/**
+ * Helper to check if user has filled mandatory fields for activities.
+ */
+function checkProfileComplete(user: any): boolean {
+  return !!(user.name && user.phone)
+}
+
 const authRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /auth/register
   fastify.post('/register', async (request, reply) => {
@@ -31,13 +38,17 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     const passwordHash = await bcrypt.hash(body.password, 12)
     const user = await fastify.prisma.user.create({
       data: { name: body.name, email: body.email, passwordHash, phone: body.phone },
-      select: { id: true, name: true, email: true, avatar: true, createdAt: true },
+      select: { id: true, name: true, email: true, avatar: true, phone: true, createdAt: true },
     })
 
     const accessToken = fastify.jwt.sign({ userId: user.id, email: user.email })
     const refreshToken = await createRefreshToken(fastify, user.id)
 
-    reply.status(201).send({ user, accessToken, refreshToken })
+    reply.status(201).send({ 
+      user: { ...user, isProfileComplete: checkProfileComplete(user) }, 
+      accessToken, 
+      refreshToken 
+    })
   })
 
   // POST /auth/login
@@ -58,7 +69,11 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     const refreshToken = await createRefreshToken(fastify, user.id)
 
     const { passwordHash: _, ...safeUser } = user
-    reply.send({ user: safeUser, accessToken, refreshToken })
+    reply.send({ 
+      user: { ...safeUser, isProfileComplete: checkProfileComplete(safeUser) }, 
+      accessToken, 
+      refreshToken 
+    })
   })
 
   // POST /auth/refresh
@@ -80,6 +95,16 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     const accessToken = fastify.jwt.sign({ userId: user.id, email: user.email })
     reply.send({ accessToken })
+  })
+
+  // GET /auth/me
+  fastify.get('/me', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const user = await fastify.prisma.user.findUnique({ where: { id: userId } })
+    if (!user) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '使用者不存在' })
+
+    const { passwordHash: _, ...safeUser } = user
+    reply.send({ ...safeUser, isProfileComplete: checkProfileComplete(safeUser) })
   })
 
   // POST /auth/logout

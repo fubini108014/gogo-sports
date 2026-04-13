@@ -3,6 +3,7 @@ import { Activity, Club, RegistrationMode, ActivityStatus } from '../../types';
 import { ChevronLeft, MapPin, Calendar, Clock, DollarSign, Users, Zap, CheckCircle, Tag } from 'lucide-react';
 import ParticipantAvatars from '../ui/ParticipantAvatars';
 import SectionHeader from '../ui/SectionHeader';
+import ClubLogo from '../club/ClubLogo';
 
 interface ActivityDetailProps {
   activity: Activity;
@@ -93,7 +94,7 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
             onClick={() => onClubClick(club.id)}
             className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow"
           >
-            <img src={club.logo} className="w-12 h-12 rounded-full object-cover bg-gray-100 dark:bg-gray-700" alt={club.name} />
+            <ClubLogo logo={club.logo} name={club.name} className="w-12 h-12 rounded-full object-cover" />
             <div className="flex-1">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">主辦社團</p>
               <p className="font-bold text-gray-900 dark:text-white">{club.name}</p>
