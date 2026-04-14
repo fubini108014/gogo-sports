@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { SPORTS_HIERARCHY } from '../constants';
@@ -319,7 +319,20 @@ const ActivityListPage: React.FC = () => {
     setAdvancedFilters({ ...DEFAULT_FILTER_STATE, date: dateStr });
   };
 
+  // 500ms debounce: auto-trigger search while user is typing
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setConfirmedSearch(searchTerm);
+    }, 500);
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [searchTerm]);
+
   const handleSearchTrigger = () => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
     setConfirmedSearch(searchTerm);
   };
 

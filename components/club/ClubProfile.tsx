@@ -318,7 +318,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
                        <div key={idx} className={`relative overflow-hidden bg-gray-100 dark:bg-gray-700 ${
                           post.images && post.images.length === 3 && idx === 0 ? 'col-span-2' : ''
                        } ${post.images && post.images.length === 1 ? 'h-56' : 'h-32'}`}>
-                          <img src={img} alt="Post Attachment" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                          <img src={img} alt="Post Attachment" loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                        </div>
                      ))}
                    </div>
@@ -640,7 +640,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
                    selectedDateActivities.map(activity => (
                     <div key={activity.id} onClick={() => onActivityClick(activity)} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-primary/30 ring-4 ring-primary/5 shadow-sm flex gap-4 cursor-pointer hover:shadow-md transition-shadow">
                       <div className="w-20 h-20 rounded-lg bg-gray-100 dark:bg-gray-700 overflow-hidden flex-shrink-0">
-                        <img src={activity.image} alt="" className="w-full h-full object-cover" />
+                        <img src={activity.image} alt="" loading="lazy" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
@@ -678,7 +678,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
                     otherActivities.map(activity => (
                       <div key={activity.id} onClick={() => onActivityClick(activity)} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex gap-4 opacity-90 hover:opacity-100 hover:shadow-md transition-all cursor-pointer">
                         <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-gray-700 overflow-hidden flex-shrink-0">
-                          <img src={activity.image} alt="" className="w-full h-full object-cover" />
+                          <img src={activity.image} alt="" loading="lazy" className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-gray-900 dark:text-white line-clamp-1">{activity.title}</h4>
@@ -707,7 +707,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
           <div className="columns-2 gap-4 space-y-4">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="break-inside-avoid rounded-xl overflow-hidden shadow-sm relative group cursor-pointer">
-                <img src={`https://picsum.photos/seed/${i + 100}/400/${i % 2 === 0 ? 500 : 300}`} className="w-full h-auto" alt="Album" />
+                <img src={`https://picsum.photos/seed/${i + 100}/400/${i % 2 === 0 ? 500 : 300}`} loading="lazy" className="w-full h-auto" alt="Album" />
                 <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <ImageIcon className="text-white" />
                 </div>

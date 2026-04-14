@@ -33,6 +33,7 @@ const ClubLogo: React.FC<ClubLogoProps> = ({ logo, name, className = '' }) => {
       <img
         src={logo}
         alt={name}
+        loading="lazy"
         className="absolute inset-0 w-full h-full object-cover"
         onError={() => setFailed(true)}
       />

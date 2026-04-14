@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Users, Settings, Trash2, Crown, Tag } from 'lucide-react';
+import { X, Users, Settings, Trash2, Tag, Link, Copy, Check, Plus } from 'lucide-react';
 import { Club, ClubMember } from '../../types';
-import { apiUpdateClub, apiGetClubMembers, apiRemoveClubMember } from '../../services/api';
+import { apiUpdateClub, apiGetClubMembers, apiRemoveClubMember, apiCreateInviteLink, apiGetInviteLinks, ClubInviteLink } from '../../services/api';
 import RankBadge from '../ui/RankBadge';
 
 interface ClubManageModalProps {
@@ -14,7 +14,7 @@ interface ClubManageModalProps {
 }
 
 const ClubManageModal: React.FC<ClubManageModalProps> = ({ isOpen, onClose, club, onClubUpdated, onToast }) => {
-  const [activeTab, setActiveTab] = useState<'info' | 'members'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'members' | 'invite'>('info');
 
   // Info form state
   const [name, setName] = useState(club.name);
@@ -26,6 +26,12 @@ const ClubManageModal: React.FC<ClubManageModalProps> = ({ isOpen, onClose, club
   const [members, setMembers] = useState<ClubMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Invite links state
+  const [inviteLinks, setInviteLinks] = useState<ClubInviteLink[]>([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [isCreatingLink, setIsCreatingLink] = useState(false);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,6 +51,16 @@ const ClubManageModal: React.FC<ClubManageModalProps> = ({ isOpen, onClose, club
     }
   }, [isOpen, activeTab, club.id]);
 
+  useEffect(() => {
+    if (isOpen && activeTab === 'invite') {
+      setInviteLoading(true);
+      apiGetInviteLinks(club.id)
+        .then(setInviteLinks)
+        .catch(() => onToast('無法載入邀請連結', 'error'))
+        .finally(() => setInviteLoading(false));
+    }
+  }, [isOpen, activeTab, club.id]);
+
   const handleSaveInfo = async () => {
     const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
     setIsSaving(true);
@@ -57,6 +73,27 @@ const ClubManageModal: React.FC<ClubManageModalProps> = ({ isOpen, onClose, club
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCreateInviteLink = async () => {
+    setIsCreatingLink(true);
+    try {
+      const link = await apiCreateInviteLink(club.id);
+      setInviteLinks(prev => [link, ...prev]);
+      onToast('邀請連結已建立', 'success');
+    } catch (err: any) {
+      onToast(err.message || '建立失敗', 'error');
+    } finally {
+      setIsCreatingLink(false);
+    }
+  };
+
+  const handleCopyLink = (token: string) => {
+    const url = `${window.location.origin}/join/${token}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedToken(token);
+      setTimeout(() => setCopiedToken(null), 2000);
+    });
   };
 
   const handleRemoveMember = async (memberId: string, memberName: string) => {
@@ -112,6 +149,16 @@ const ClubManageModal: React.FC<ClubManageModalProps> = ({ isOpen, onClose, club
           >
             <Users size={16} /> 成員管理
           </button>
+          <button
+            onClick={() => setActiveTab('invite')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition-colors border-b-2 ${
+              activeTab === 'invite'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <Link size={16} /> 邀請連結
+          </button>
         </div>
 
         {/* Content */}
@@ -151,6 +198,53 @@ const ClubManageModal: React.FC<ClubManageModalProps> = ({ isOpen, onClose, club
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'invite' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500 dark:text-gray-400">產生邀請連結，分享給想加入的成員（有效期 7 天）</p>
+                <button
+                  onClick={handleCreateInviteLink}
+                  disabled={isCreatingLink}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 flex-shrink-0 ml-3"
+                >
+                  <Plus size={14} /> {isCreatingLink ? '建立中...' : '新增連結'}
+                </button>
+              </div>
+
+              {inviteLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map(i => (
+                    <div key={i} className="h-16 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : inviteLinks.length === 0 ? (
+                <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-8">尚無邀請連結</p>
+              ) : (
+                <div className="space-y-2">
+                  {inviteLinks.map(link => {
+                    const url = `${window.location.origin}/join/${link.token}`;
+                    const expiresDate = new Date(link.expiresAt).toLocaleDateString('zh-TW');
+                    return (
+                      <div key={link.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">{url}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">到期：{expiresDate}</p>
+                        </div>
+                        <button
+                          onClick={() => handleCopyLink(link.token)}
+                          className="p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary hover:bg-primary/10 transition-colors flex-shrink-0"
+                          title="複製連結"
+                        >
+                          {copiedToken === link.token ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

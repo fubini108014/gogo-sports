@@ -458,7 +458,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleUpdateProfile = async (data: { name?: string; bio?: string; phone?: string }) => {
     const updated = await apiUpdateProfile(data);
-    setUser(prev => ({ ...prev, name: updated.name, avatar: updated.avatar }));
+    setUser(prev => ({ ...prev, name: updated.name, avatar: updated.avatar, bio: updated.bio, phone: updated.phone }));
     addToast('個人資料已更新', 'success');
   };
 

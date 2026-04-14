@@ -11,6 +11,7 @@ import UserProfilePage from './pages/UserProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import MessagesPage from './pages/MessagesPage';
 import ConversationPage from './pages/ConversationPage';
+import JoinByTokenPage from './pages/JoinByTokenPage';
 
 const App: React.FC = () => (
   <AppProvider>
@@ -27,6 +28,8 @@ const App: React.FC = () => (
       </Route>
       {/* Full-screen conversation — no layout wrapper */}
       <Route path="/messages/:id" element={<ConversationPage />} />
+      {/* Join by invite token — no layout wrapper */}
+      <Route path="/join/:token" element={<JoinByTokenPage />} />
     </Routes>
   </AppProvider>
 );

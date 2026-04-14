@@ -30,7 +30,7 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
         clubAdminRoles: { select: { clubId: true } },
         clubMemberships: { select: { clubId: true } },
         registrations: {
-          where: { status: 'CONFIRMED' },
+          where: { status: 'APPROVED' },
           select: { activityId: true },
         },
       },
@@ -79,7 +79,7 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     const [data, total] = await Promise.all([
       fastify.prisma.activity.findMany({
         where: {
-          registrations: { some: { userId, status: 'CONFIRMED' } },
+          registrations: { some: { userId, status: 'APPROVED' } },
           date: dateFilter,
         },
         include: { club: { select: { id: true, name: true, logo: true } } },
@@ -89,7 +89,7 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
       }),
       fastify.prisma.activity.count({
         where: {
-          registrations: { some: { userId, status: 'CONFIRMED' } },
+          registrations: { some: { userId, status: 'APPROVED' } },
           date: dateFilter,
         },
       }),

@@ -104,6 +104,8 @@ export interface User {
   id: string;
   name: string;
   avatar: string;
+  bio?: string;
+  phone?: string;
   isClubAdmin: boolean;
   registeredActivityIds: string[];
   joinedClubIds: string[];

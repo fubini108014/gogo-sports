@@ -37,7 +37,7 @@ const ModalManager: React.FC = () => {
     setHomeLocations, setHomeMainCategories, setHomeSubCategories,
     darkMode, setDarkMode,
     handleRegistrationConfirm,
-    handleCreatePost, handleCreateActivity, handleCreateClub,
+    handleCreatePost, handleCreateActivity, handleCreateClub, handleUpdateProfile, handleLogout,
     addToast,
     exploreTags, saveExploreTags, isExploreManagerOpen, setIsExploreManagerOpen,
     isDateSelectModalOpen, setIsDateSelectModalOpen, selectedCalendarDate, setSelectedCalendarDate,
@@ -145,6 +145,9 @@ const ModalManager: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         darkMode={darkMode}
         onDarkModeToggle={() => setDarkMode(!darkMode)}
+        user={user}
+        onUpdateProfile={handleUpdateProfile}
+        onLogout={handleLogout}
       />
 
       <ExploreTagManagerModal

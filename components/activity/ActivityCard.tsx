@@ -46,6 +46,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
         <img
           src={activity.image}
           alt={activity.title}
+          loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className={`absolute top-2 left-2 flex flex-wrap gap-1.5 ${isCompact ? 'top-2 left-2' : 'top-3 left-3 gap-2'}`}>

@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
+import { randomBytes } from 'crypto'
 import { authenticate } from '../middleware/authenticate.js'
 
 const createClubSchema = z.object({
@@ -189,6 +190,78 @@ const clubRoutes: FastifyPluginAsync = async (fastify) => {
 
     await fastify.prisma.clubMember.delete({ where: { userId_clubId: { userId: memberId, clubId } } })
     reply.status(204).send()
+  })
+
+  // POST /clubs/:id/invite-links  (需為管理員)
+  fastify.post('/:id/invite-links', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const { id: clubId } = request.params as { id: string }
+    const body = z.object({ expiresInDays: z.number().int().min(1).max(30).default(7) }).parse(request.body ?? {})
+
+    const club = await fastify.prisma.club.findUnique({ where: { id: clubId } })
+    if (!club) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '社團不存在' })
+
+    const isAdmin = await fastify.prisma.clubAdmin.findUnique({
+      where: { userId_clubId: { userId, clubId } },
+    })
+    if (!isAdmin) return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: '只有管理員可以建立邀請連結' })
+
+    const token = randomBytes(20).toString('hex')
+    const expiresAt = new Date(Date.now() + body.expiresInDays * 24 * 60 * 60 * 1000)
+
+    const link = await fastify.prisma.clubInviteLink.create({
+      data: { clubId, token, expiresAt },
+    })
+
+    reply.status(201).send(link)
+  })
+
+  // GET /clubs/:id/invite-links  (需為管理員)
+  fastify.get('/:id/invite-links', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const { id: clubId } = request.params as { id: string }
+
+    const club = await fastify.prisma.club.findUnique({ where: { id: clubId } })
+    if (!club) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '社團不存在' })
+
+    const isAdmin = await fastify.prisma.clubAdmin.findUnique({
+      where: { userId_clubId: { userId, clubId } },
+    })
+    if (!isAdmin) return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: '只有管理員可以查看邀請連結' })
+
+    const links = await fastify.prisma.clubInviteLink.findMany({
+      where: { clubId, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    reply.send({ data: links })
+  })
+
+  // POST /clubs/join-by-token/:token  (需登入)
+  fastify.post('/join-by-token/:token', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const { token } = request.params as { token: string }
+
+    const link = await fastify.prisma.clubInviteLink.findUnique({ where: { token } })
+    if (!link) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '邀請連結不存在' })
+    if (link.expiresAt < new Date()) return reply.status(410).send({ statusCode: 410, error: 'Gone', message: '邀請連結已過期' })
+
+    const { clubId } = link
+
+    const club = await fastify.prisma.club.findUnique({ where: { id: clubId } })
+    if (!club) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '社團不存在' })
+
+    try {
+      await fastify.prisma.clubMember.create({ data: { userId, clubId } })
+    } catch (err: any) {
+      if (err.code === 'P2002') {
+        return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: '您已加入此社團' })
+      }
+      throw err
+    }
+
+    const membersCount = await fastify.prisma.clubMember.count({ where: { clubId } })
+    reply.send({ message: '成功加入社團', club: { ...club, membersCount } })
   })
 
   // GET /clubs/:id/activities

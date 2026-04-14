@@ -169,6 +169,8 @@ export function mapUser(u: any): User {
     id: u.id,
     name: u.name,
     avatar: u.avatar ?? 'https://picsum.photos/id/64/200/200',
+    bio: u.bio ?? undefined,
+    phone: u.phone ?? undefined,
     isClubAdmin: u.isClubAdmin ?? false,
     registeredActivityIds: u.registeredActivityIds ?? [],
     joinedClubIds: u.joinedClubIds ?? [],
@@ -425,6 +427,37 @@ export async function apiGetClubMembers(clubId: string): Promise<ClubMember[]> {
 
 export async function apiRemoveClubMember(clubId: string, memberId: string): Promise<void> {
   await apiFetch(`/clubs/${clubId}/members/${memberId}`, { method: 'DELETE' });
+}
+
+export interface ClubInviteLink {
+  id: string;
+  clubId: string;
+  token: string;
+  expiresAt: string;
+  requireApproval: boolean;
+  createdAt: string;
+}
+
+export async function apiCreateInviteLink(
+  clubId: string,
+  expiresInDays = 7
+): Promise<ClubInviteLink> {
+  return apiFetch(`/clubs/${clubId}/invite-links`, {
+    method: 'POST',
+    body: JSON.stringify({ expiresInDays }),
+  });
+}
+
+export async function apiGetInviteLinks(clubId: string): Promise<ClubInviteLink[]> {
+  const res = await apiFetch<{ data: ClubInviteLink[] }>(`/clubs/${clubId}/invite-links`);
+  return res.data;
+}
+
+export async function apiJoinByToken(
+  token: string
+): Promise<{ message: string; club: Club & { membersCount: number } }> {
+  const res = await apiFetch<any>(`/clubs/join-by-token/${token}`, { method: 'POST' });
+  return { message: res.message, club: mapClub(res.club) as Club & { membersCount: number } };
 }
 
 // ── Notifications ─────────────────────────────────────────────────
