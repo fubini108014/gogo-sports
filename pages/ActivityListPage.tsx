@@ -285,7 +285,7 @@ const ActivityListPage: React.FC = () => {
           const cat = SPORTS_HIERARCHY.find(c => c.name === main);
           if (cat) subItems.push(...cat.items);
         });
-        if (subItems.length > 0) params.tags = subItems.length === 0 ? undefined : subItems.join(',');
+        if (subItems.length > 0) params.tags = subItems.join(',');
       }
     }
 

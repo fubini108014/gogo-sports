@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { authenticate } from '../middleware/authenticate.js'
 
 const createPostSchema = z.object({
@@ -77,7 +78,7 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     if (!isMember) return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: '只有社團成員可以發文' })
 
     const post = await fastify.prisma.post.create({
-      data: { clubId, authorId: userId, ...body, images: body.images ?? [] },
+      data: { clubId, authorId: userId, ...body, images: body.images ?? [] } as Prisma.PostUncheckedCreateInput,
       include: { author: { select: { id: true, name: true, avatar: true } } },
     })
 

@@ -100,7 +100,7 @@ const clubRoutes: FastifyPluginAsync = async (fastify) => {
     const body = createClubSchema.parse(request.body)
 
     const club = await fastify.prisma.$transaction(async (tx) => {
-      const newClub = await tx.club.create({ data: body })
+      const newClub = await tx.club.create({ data: body as Prisma.ClubUncheckedCreateInput })
       // 建立者自動成為管理員 + 成員
       await tx.clubAdmin.create({ data: { userId, clubId: newClub.id } })
       await tx.clubMember.create({ data: { userId, clubId: newClub.id } })

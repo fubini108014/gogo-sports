@@ -8,7 +8,7 @@ interface UseInfiniteScrollOptions {
 interface UseInfiniteScrollResult {
   displayCount: number;
   isMoreLoading: boolean;
-  sentinelRef: React.RefObject<HTMLDivElement>;
+  sentinelRef: React.RefObject<HTMLDivElement | null>;
 }
 
 /**

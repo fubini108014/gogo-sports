@@ -155,7 +155,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     const activity = await fastify.prisma.activity.findUnique({
       where: { id },
       include: { 
-        club: { select: { id: true, name: true, logo: true, membersCount: true } },
+        club: { select: { id: true, name: true, logo: true } },
         host: { select: { id: true, name: true, avatar: true, bio: true, globalXP: true, sportXP: true } }
       },
     })
@@ -207,12 +207,12 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const activity = await fastify.prisma.activity.create({
-      data: { 
-        ...body, 
+      data: {
+        ...body,
         hostId: userId,
-        date: new Date(body.date), 
-        groups: body.groups ?? [] 
-      },
+        date: new Date(body.date),
+        groups: body.groups ?? []
+      } as Prisma.ActivityUncheckedCreateInput,
       include: { 
         club: { select: { id: true, name: true, logo: true } },
         host: { select: { id: true, name: true, avatar: true } }
@@ -292,12 +292,12 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const registration = await fastify.prisma.$transaction(async (tx) => {
         const reg = await tx.registration.create({
-          data: { 
-            userId, 
-            activityId, 
+          data: {
+            userId,
+            activityId,
             status,
             ...regData
-          },
+          } as Prisma.RegistrationUncheckedCreateInput,
         })
         
         // Only increment count if APPROVED

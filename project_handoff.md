@@ -1,6 +1,6 @@
 # GoGo Sports — 交接文件
 
-> 最後更新：2026-04-19（訊息系統、Autocomplete、相簿上傳、LockedPage 全部完成）
+> 最後更新：2026-04-19（修正後端 TypeScript 錯誤；確認活動評分已完成；釐清骨架屏實際缺口）
 
 ---
 
@@ -52,9 +52,11 @@ npm run dev                          # 前端 :5173
 - 詳情：**骨架屏**（取代 spinner）；大圖、主揪信任卡（稱號/帶團次數）、LIMITED 進度條 / OPEN 頭像列
 - 建立：支援 LIMITED / OPEN 模式，approvalMode AUTO / MANUAL
 - 報名流程：Step1 組別/交通 → Step2 聯絡資訊 + 隱私聲明
+- **報名者列表**：主揪可在活動詳情頁查看所有報名者（`ParticipantsPanel`），顯示狀態、聯絡資訊，支援審核操作
 - 主揪審核：批准/拒絕/移入候補，批准後才扣名額
 - 自動遞補：有人取消時最早 WAITLISTED 自動升為 APPROVED 並送通知
 - 標記缺席：活動結束後主揪可標記，觸發 XP 懲罰
+- **活動評分**：活動結束後，APPROVED / ABSENT 參與者可評 1–5 星；`RatingPanel` 元件、`POST /activities/:id/rate`、`GET /activities/:id/my-rating`；自動更新 `Club.rating` 平均值
 
 ### 社團模組
 - 列表：關鍵字/分類/排序，IntersectionObserver 無限滾動
@@ -101,7 +103,7 @@ npm run dev                          # 前端 :5173
 ### 系統
 - Dark Mode：Tailwind `dark:` class，localStorage 持久化
 - Toast：底部彈出（success/error/info），3 秒消失
-- Skeleton：ActivityList、ClubList、ActivityDetail、NotificationList、UserProfile
+- Skeleton：ActivityList、ClubList、ActivityDetail（`ActivityDetailPage.tsx`）、NotificationList（`NotificationList.tsx`）、UserProfile
 - IntersectionObserver 無限滾動：ActivityList、ClubList
 - 搜尋防抖：ActivityListPage 500ms（打字自動觸發），Enter/按鈕立即觸發
 - 圖片 `loading="lazy"`：全站
@@ -300,11 +302,9 @@ interface ActivitySuggestion {
 
 | 項目 | 說明 | 優先 |
 |------|------|------|
-| 活動評分 | 活動結束後參與者可評分 1-5 星，更新 `Club.rating` | 低 |
-| 報名者列表 UI | `GET /activities/:id/participants` API 已有，管理員視圖 UI 尚未做 | 低 |
+| 探索標籤後端路由 | `GET /users/me/explore-tags` 後端路由不存在（`services/api.ts` 有 `// Backend endpoint may not exist yet` 備注）；`saveExploreTags` 目前只存 localStorage，偏好無法跨裝置同步 | 低 |
 | 地圖標記聚合 | 同場地多活動重疊，待接 Leaflet.markercluster | 低 |
-| 語言切換 | SettingsModal 語言選項為佔位，i18n 未實作 | 低 |
-| 探索標籤同步失敗不回滾 | 網路失敗時前端已顯示假成功 | 低 |
+| 語言切換 | SettingsModal 無語言選項，i18n 完全未實作 | 低 |
 
 ---
 
