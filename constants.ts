@@ -233,6 +233,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a1',
     clubId: 'c1',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '週二晚間歡樂羽球 (含教練指導)',
     date: '2023-11-14',
     time: '19:00 - 21:00',
@@ -252,6 +254,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a2',
     clubId: 'c2',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '合歡北峰+西峰單攻 (百岳挑戰)',
     date: '2023-11-18',
     time: '04:00 集合',
@@ -270,6 +274,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a3',
     clubId: 'c1',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '週四新手友善羽球局',
     date: '2023-11-16',
     time: '20:00 - 22:00',
@@ -289,6 +295,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a4',
     clubId: 'c2',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '陽明山東西大縱走 (十連峰)',
     date: '2023-11-25',
     time: '06:00 集合',
@@ -307,6 +315,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a5',
     clubId: 'c1',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '週末 3v3 籃球鬥牛賽',
     date: '2023-11-19',
     time: '14:00',
@@ -326,6 +336,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a6',
     clubId: 'c3',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '龍洞 SUP 日出團',
     date: '2023-11-26',
     time: '04:30 集合',
@@ -344,6 +356,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a7',
     clubId: 'c4',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '週五格鬥體能特訓',
     date: '2023-11-17',
     time: '19:30 - 21:00',
@@ -363,6 +377,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a8',
     clubId: 'c1',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '晨間喚醒瑜珈',
     date: '2023-11-20',
     time: '07:00 - 08:00',
@@ -380,6 +396,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a9',
     clubId: 'c3',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '貢寮龍洞浮潛體驗',
     date: '2023-11-27',
     time: '10:00',
@@ -398,6 +416,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a10',
     clubId: 'c5',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '台中望高寮夜跑團',
     date: '2023-11-15',
     time: '20:00',
@@ -415,6 +435,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a11',
     clubId: 'c6',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '高雄西子灣沙排友誼賽',
     date: '2023-11-21',
     time: '15:30',
@@ -433,6 +455,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a12',
     clubId: 'c7',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '台南奇美博物館路跑',
     date: '2023-11-22',
     time: '06:30',
@@ -450,6 +474,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a13',
     clubId: 'c8',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '新竹南寮單車半日遊',
     date: '2023-11-19',
     time: '14:00',
@@ -467,6 +493,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a14',
     clubId: 'c9',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '桃園虎頭山越野跑',
     date: '2023-11-25',
     time: '08:00',
@@ -485,6 +513,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a15',
     clubId: 'c10',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '台中室內抱石體驗',
     date: '2023-11-18',
     time: '19:00',
@@ -503,6 +533,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a16',
     clubId: 'c11',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '花蓮七星潭獨木舟',
     date: '2023-12-01',
     time: '05:00',
@@ -520,6 +552,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a17',
     clubId: 'c1',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '松山羽球館團練',
     date: '2023-11-23',
     time: '18:00',
@@ -538,6 +572,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a18',
     clubId: 'c12',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '台北大佳河濱滑水體驗',
     date: '2023-11-20',
     time: '13:00',
@@ -556,6 +592,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a19',
     clubId: 'c13',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '台中南區重訓推廣課程',
     date: '2023-11-21',
     time: '19:00',
@@ -574,6 +612,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a20',
     clubId: 'c14',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '高雄美術館皮拉提斯',
     date: '2023-11-24',
     time: '10:00',
@@ -591,6 +631,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a21',
     clubId: 'c15',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '宜蘭冬山河划船趣',
     date: '2023-11-28',
     time: '14:30',
@@ -608,6 +650,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a22',
     clubId: 'c16',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '基隆潮境公園岸潛',
     date: '2023-11-26',
     time: '09:00',
@@ -626,6 +670,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a23',
     clubId: 'c1',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '台北信義區 ZUMBA 狂潮',
     date: '2023-11-19',
     time: '14:00',
@@ -643,6 +689,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a24',
     clubId: 'c1',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '新竹科學園區羽球對抗賽',
     date: '2023-11-30',
     time: '19:00',
@@ -661,6 +709,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a25',
     clubId: 'c2',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '嘉義阿里山健行日',
     date: '2023-12-05',
     time: '08:00',
@@ -678,6 +728,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: 'a26',
     clubId: 'c1',
+    hostId: 'u1',
+    approvalMode: 'AUTO' as const,
     title: '桃園中壢籃球夜鬥',
     date: '2023-11-16',
     time: '20:30',

@@ -4,6 +4,9 @@ import { ChevronLeft, MapPin, Calendar, Clock, DollarSign, Users, Zap, CheckCirc
 import ParticipantAvatars from '../ui/ParticipantAvatars';
 import SectionHeader from '../ui/SectionHeader';
 import ClubLogo from '../club/ClubLogo';
+import ParticipantsPanel from './ParticipantsPanel';
+import RatingPanel from './RatingPanel';
+import { useAppContext } from '../../context/AppContext';
 
 interface ActivityDetailProps {
   activity: Activity;
@@ -22,6 +25,9 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
   onRegisterClick,
   onClubClick,
 }) => {
+  const { user } = useAppContext();
+  const isHost = user.id === activity.hostId;
+
   const isLimited = activity.mode === RegistrationMode.LIMITED;
   const totalCount = (activity.currentInternalCount || 0) + activity.currentAppCount;
   const percentage = isLimited && activity.maxParticipants
@@ -232,6 +238,22 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
               ))}
             </div>
           </div>
+        )}
+
+        {/* Rating Panel — APPROVED/ABSENT participants, ENDED activities */}
+        {activity.canRate && (
+          <RatingPanel
+            activityId={activity.id}
+            initialRating={activity.myRating ?? null}
+          />
+        )}
+
+        {/* Participants Panel — host only */}
+        {isHost && (
+          <ParticipantsPanel
+            activityId={activity.id}
+            approvalMode={activity.approvalMode}
+          />
         )}
       </div>
 

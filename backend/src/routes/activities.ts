@@ -97,6 +97,51 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     reply.send({ data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
   })
 
+  // GET /activities/suggestions?q=keyword  (Autocomplete)
+  fastify.get('/suggestions', async (request, reply) => {
+    const { q = '' } = request.query as Record<string, string>
+    const keyword = q.trim()
+    if (!keyword || keyword.length < 1) return reply.send({ data: [] })
+
+    // Collect unique titles, locations, and tags that match
+    const activities = await fastify.prisma.activity.findMany({
+      where: {
+        status: 'OPEN',
+        OR: [
+          { title: { contains: keyword, mode: 'insensitive' } },
+          { location: { contains: keyword, mode: 'insensitive' } },
+          { city: { contains: keyword, mode: 'insensitive' } },
+        ],
+      },
+      select: { title: true, location: true, city: true, tags: true },
+      take: 30,
+    })
+
+    const seen = new Set<string>()
+    const suggestions: { type: 'title' | 'location' | 'tag'; value: string }[] = []
+
+    for (const a of activities) {
+      if (!seen.has(a.title) && a.title.toLowerCase().includes(keyword.toLowerCase())) {
+        seen.add(a.title)
+        suggestions.push({ type: 'title', value: a.title })
+      }
+      const loc = `${a.city} ${a.location}`.trim()
+      if (!seen.has(loc) && loc.toLowerCase().includes(keyword.toLowerCase())) {
+        seen.add(loc)
+        suggestions.push({ type: 'location', value: loc })
+      }
+      for (const tag of a.tags) {
+        if (!seen.has(tag) && tag.toLowerCase().includes(keyword.toLowerCase())) {
+          seen.add(tag)
+          suggestions.push({ type: 'tag', value: tag })
+        }
+      }
+      if (suggestions.length >= 8) break
+    }
+
+    reply.send({ data: suggestions.slice(0, 8) })
+  })
+
   // GET /activities/:id
   fastify.get('/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
@@ -118,16 +163,30 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     if (!activity) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '活動不存在' })
 
     let myRegistration = null
+    let myRating: number | null = null
     if (userId) {
       myRegistration = await fastify.prisma.registration.findUnique({
         where: { userId_activityId: { userId, activityId: id } },
       })
+      if (activity.status === 'ENDED') {
+        const r = await fastify.prisma.activityRating.findUnique({
+          where: { activityId_userId: { activityId: id, userId } },
+        })
+        myRating = r?.score ?? null
+      }
     }
+
+    const canRate =
+      activity.status === 'ENDED' &&
+      !!myRegistration &&
+      ['APPROVED', 'ABSENT'].includes(myRegistration.status)
 
     reply.send({
       ...activity,
       isRegistered: !!myRegistration && myRegistration.status !== 'CANCELLED',
       myRegistration,
+      myRating,
+      canRate,
       spotsLeft: activity.maxParticipants != null ? activity.maxParticipants - activity.currentAppCount : null,
     })
   })
@@ -440,6 +499,64 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
       }
       throw err
     }
+  })
+
+  // ── GET /activities/:id/my-rating ───────────────────────────────
+  fastify.get('/:id/my-rating', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const { id: activityId } = request.params as { id: string }
+
+    const rating = await fastify.prisma.activityRating.findUnique({
+      where: { activityId_userId: { activityId, userId } },
+    })
+
+    reply.send({ score: rating?.score ?? null, comment: rating?.comment ?? null })
+  })
+
+  // ── POST /activities/:id/rate ────────────────────────────────────
+  // Eligible: activity must be ENDED, user must have APPROVED or ABSENT registration
+  fastify.post('/:id/rate', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const { id: activityId } = request.params as { id: string }
+    const { score, comment } = z.object({
+      score: z.number().int().min(1).max(5),
+      comment: z.string().max(200).optional(),
+    }).parse(request.body)
+
+    const activity = await fastify.prisma.activity.findUnique({ where: { id: activityId } })
+    if (!activity) return reply.status(404).send({ message: '活動不存在' })
+    if (activity.status !== 'ENDED') return reply.status(400).send({ message: '只能對已結束的活動評分' })
+
+    const reg = await fastify.prisma.registration.findUnique({
+      where: { userId_activityId: { userId, activityId } },
+    })
+    if (!reg || !['APPROVED', 'ABSENT'].includes(reg.status)) {
+      return reply.status(403).send({ message: '只有參與者可以評分' })
+    }
+
+    // Upsert rating
+    await fastify.prisma.activityRating.upsert({
+      where: { activityId_userId: { activityId, userId } },
+      create: { activityId, userId, score, comment },
+      update: { score, comment },
+    })
+
+    // Recalculate Club.rating if this activity belongs to a club
+    if (activity.clubId) {
+      const agg = await fastify.prisma.activityRating.aggregate({
+        where: { activity: { clubId: activity.clubId } },
+        _avg: { score: true },
+        _count: { score: true },
+      })
+      if (agg._count.score > 0) {
+        await fastify.prisma.club.update({
+          where: { id: activity.clubId },
+          data: { rating: Math.round((agg._avg.score ?? 0) * 10) / 10 },
+        })
+      }
+    }
+
+    reply.status(201).send({ ok: true })
   })
 }
 

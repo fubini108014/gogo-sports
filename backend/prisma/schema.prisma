@@ -95,11 +95,11 @@ model User {
   phone        String?
   avatar       String?
   bio          String?
-  
+
   // XP Systems
   globalXP     Int      @default(0)
   sportXP      Json     @default("{}") // Stores { "BADMINTON": 500, "HIKING": 20 }
-  
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -113,7 +113,14 @@ model User {
   comments         Comment[]
   notifications    Notification[]
   refreshTokens    RefreshToken[]
-  
+
+  // Messages
+  conversations    ConversationParticipant[]
+  sentMessages     Message[]
+
+  // Ratings
+  activityRatings  ActivityRating[]
+
   // Safety
   reportsSent      Report[]       @relation("Reporter")
   reportsReceived  Report[]       @relation("ReportTarget")
@@ -228,9 +235,10 @@ model Activity {
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 
-  host          User           @relation("UserHostedActivities", fields: [hostId], references: [id])
-  club          Club?          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  host          User             @relation("UserHostedActivities", fields: [hostId], references: [id])
+  club          Club?            @relation(fields: [clubId], references: [id], onDelete: Cascade)
   registrations Registration[]
+  ratings       ActivityRating[]
 
   @@map("activities")
 }
@@ -275,6 +283,21 @@ model Blacklist {
   @@map("blacklist")
 }
 
+model ActivityRating {
+  id         String   @id @default(cuid())
+  activityId String
+  userId     String
+  score      Int      // 1–5
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, userId])
+  @@map("activity_ratings")
+}
+
 model Report {
   id         String       @id @default(cuid())
   reporterId String
@@ -289,6 +312,53 @@ model Report {
   target   User @relation("ReportTarget", fields: [targetId], references: [id]) // Assuming target is often a user
 
   @@map("reports")
+}
+
+// ─────────────────────────────────────────────
+// Messaging
+// ─────────────────────────────────────────────
+
+model Conversation {
+  id        String   @id @default(cuid())
+  isGroup   Boolean  @default(false)
+  name      String?  // Only for group conversations
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  joinedAt       DateTime  @default(now())
+  lastReadAt     DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  replyToId      String?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies      Message[]    @relation("MessageReplies")
+
+  @@map("messages")
 }
 
 // ─────────────────────────────────────────────

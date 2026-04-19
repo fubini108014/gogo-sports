@@ -3,12 +3,12 @@ import { createPortal } from 'react-dom';
 import { Club, Activity, Post, PostType, CommentItem } from '../../types';
 import RankBadge from '../ui/RankBadge';
 import CalendarPicker from '../ui/CalendarPicker';
-import { MapPin, Users, Star, Calendar as CalendarIcon, Image as ImageIcon, ChevronRight, PenSquare, Heart, MessageSquare, ArrowUpDown, MoreHorizontal, Send, X, CornerDownRight, AlertTriangle, Edit2 } from 'lucide-react';
+import { MapPin, Users, Star, Calendar as CalendarIcon, Image as ImageIcon, ChevronRight, PenSquare, Heart, MessageSquare, ArrowUpDown, MoreHorizontal, Send, X, CornerDownRight, AlertTriangle, Edit2, Plus, Trash2 } from 'lucide-react';
 import CreatePostModal from '../modals/CreatePostModal';
 import ClubManageModal from '../modals/ClubManageModal';
 import ClubLogo from './ClubLogo';
 import { useAppContext } from '../../context/AppContext';
-import { apiGetClubPosts, apiTogglePostLike, apiCreatePost, apiDeletePost, apiUpdatePost, apiGetPostComments, apiCreateComment, apiDeleteComment } from '../../services/api';
+import { apiGetClubPosts, apiTogglePostLike, apiCreatePost, apiDeletePost, apiUpdatePost, apiGetPostComments, apiCreateComment, apiDeleteComment, apiUploadFile } from '../../services/api';
 
 interface ClubProfileProps {
   club: Club;
@@ -58,6 +58,11 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
 
   // Confirm delete dialog
   const [confirmDeletePostId, setConfirmDeletePostId] = useState<string | null>(null);
+
+  // Album state
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const albumInputRef = useRef<HTMLInputElement>(null);
 
   // Edit post state
   const [editingPost, setEditingPost] = useState<Post | null>(null);
@@ -169,6 +174,24 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
   const handleClubUpdated = (updated: Club) => {
     setCurrentClub(updated);
     onClubUpdated?.(updated);
+  };
+
+  const handleAlbumUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setUploadingPhoto(true);
+    try {
+      const url = await apiUploadFile(file);
+      await apiCreatePost(currentClub.id, 'PHOTO', '', [url]);
+      const { data } = await apiGetClubPosts(currentClub.id);
+      setClubPosts(data);
+      onToast('照片上傳成功', 'success');
+    } catch {
+      onToast('上傳失敗，請重試', 'error');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleDeletePost = (postId: string) => {
@@ -703,18 +726,90 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ club, activities, onBack, onA
           </div>
         )}
 
-        {activeTab === 'album' && (
-          <div className="columns-2 gap-4 space-y-4">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="break-inside-avoid rounded-xl overflow-hidden shadow-sm relative group cursor-pointer">
-                <img src={`https://picsum.photos/seed/${i + 100}/400/${i % 2 === 0 ? 500 : 300}`} loading="lazy" className="w-full h-auto" alt="Album" />
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <ImageIcon className="text-white" />
+        {activeTab === 'album' && (() => {
+          const isAdmin = managedClubIds.includes(currentClub.id);
+          const photoImages = clubPosts
+            .filter(p => p.type === PostType.PHOTO && p.images?.length)
+            .flatMap(p => p.images ?? []);
+
+          return (
+            <>
+              {/* Upload button (admins only) */}
+              {isAdmin && (
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {photoImages.length > 0 ? `共 ${photoImages.length} 張照片` : '尚無照片'}
+                  </p>
+                  <button
+                    onClick={() => albumInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-60"
+                  >
+                    {uploadingPhoto ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Plus size={16} />
+                    )}
+                    上傳照片
+                  </button>
+                  <input
+                    ref={albumInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleAlbumUpload}
+                  />
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+
+              {photoImages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
+                  <ImageIcon size={40} className="mb-3 opacity-40" />
+                  <p className="text-sm font-medium">還沒有相簿照片</p>
+                  {isAdmin && (
+                    <p className="text-xs mt-1">點擊「上傳照片」新增第一張</p>
+                  )}
+                </div>
+              ) : (
+                <div className="columns-2 gap-2 space-y-2">
+                  {photoImages.map((url, i) => (
+                    <div
+                      key={i}
+                      className="break-inside-avoid rounded-xl overflow-hidden shadow-sm relative group cursor-pointer"
+                      onClick={() => setLightboxUrl(url)}
+                    >
+                      <img src={url} loading="lazy" className="w-full h-auto" alt="Album" />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <ImageIcon className="text-white" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Lightbox */}
+              {lightboxUrl && createPortal(
+                <div
+                  className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+                  onClick={() => setLightboxUrl(null)}
+                >
+                  <button
+                    onClick={() => setLightboxUrl(null)}
+                    className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                  <img
+                    src={lightboxUrl}
+                    className="max-w-[92vw] max-h-[88vh] rounded-xl object-contain"
+                    onClick={e => e.stopPropagation()}
+                  />
+                </div>,
+                document.body
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Modals */}

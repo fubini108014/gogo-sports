@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Users, ChevronLeft, Search, CheckCheck, Edit, X } from 'lucide-react';
+import { useAppContext } from '../context/AppContext';
+import LockedPage from '../components/ui/LockedPage';
+import {
+  apiGetConversations,
+  apiGetMe,
+  apiStartConversation,
+  ConversationSummary,
+} from '../services/api';
 
-// Mock contacts for new conversation
-const MOCK_CONTACTS = [
-  { id: 'c1', name: 'Kevin Lin', avatar: 'https://picsum.photos/id/70/100/100', isGroup: false },
-  { id: 'c2', name: '台北跑步聯盟', avatar: 'https://picsum.photos/id/15/100/100', isGroup: true },
-  { id: 'c3', name: 'Wendy Chen', avatar: 'https://picsum.photos/id/46/100/100', isGroup: false },
-  { id: 'c4', name: '週末籃球團', avatar: 'https://picsum.photos/id/22/100/100', isGroup: true },
-  { id: 'c5', name: 'Jason Wu', avatar: 'https://picsum.photos/id/33/100/100', isGroup: false },
-];
-
+// ── Types re-exported for ConversationPage ─────────────────────────
 export interface Chat {
   id: string;
   name: string;
@@ -22,13 +22,6 @@ export interface Chat {
   isGroup: boolean;
 }
 
-export const MOCK_CHATS: Chat[] = [
-  { id: '1', name: '台北羽球狂熱團', lastMsg: 'Alex: 下週二場地已預約好了喔！', time: '14:20', unread: 3, avatar: 'https://picsum.photos/id/10/100/100', isGroup: true },
-  { id: '2', name: 'Sarah Wu', lastMsg: '那明天 19:00 見！', time: '昨天', unread: 0, avatar: 'https://picsum.photos/id/65/100/100', isGroup: false },
-  { id: '3', name: '山野行者 Hiking Club', lastMsg: 'David: 這次活動建議穿著防潑水衣物。', time: '昨天', unread: 0, avatar: 'https://picsum.photos/id/12/100/100', isGroup: true },
-  { id: '4', name: '阿強', lastMsg: '可以幫忙帶個球嗎？', time: '週六', unread: 1, avatar: 'https://picsum.photos/id/64/100/100', isGroup: false },
-];
-
 type FilterType = 'all' | 'personal' | 'group';
 
 const FILTERS: { key: FilterType; label: string }[] = [
@@ -37,24 +30,121 @@ const FILTERS: { key: FilterType; label: string }[] = [
   { key: 'group', label: '群組' },
 ];
 
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return '剛剛';
+  if (mins < 60) return `${mins}分鐘前`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}小時前`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}天前`;
+  return new Date(iso).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
+}
+
+function mapConversation(c: ConversationSummary): Chat {
+  const lastMsgText = c.lastMsg
+    ? (c.isGroup ? `${c.lastMsg.senderName}: ${c.lastMsg.content}` : c.lastMsg.content)
+    : '尚無訊息';
+  return {
+    id: c.id,
+    name: c.name,
+    lastMsg: lastMsgText,
+    time: c.lastMsg ? relativeTime(c.lastMsg.createdAt) : '',
+    unread: c.unread,
+    avatar: c.avatar ?? 'https://picsum.photos/id/10/100/100',
+    isGroup: c.isGroup,
+  };
+}
+
+// ── Contact search (search other users) ───────────────────────────
+interface ContactResult {
+  id: string;
+  name: string;
+  avatar: string;
+}
+
 const MessagesPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAppContext();
+
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
   const [showNewChat, setShowNewChat] = useState(false);
   const [contactSearch, setContactSearch] = useState('');
+  const [contacts, setContacts] = useState<ContactResult[]>([]);
+  const [startingChat, setStartingChat] = useState(false);
 
-  const filteredContacts = MOCK_CONTACTS.filter(c =>
-    c.name.toLowerCase().includes(contactSearch.toLowerCase())
-  );
+  useEffect(() => {
+    if (!user) return;
+    loadConversations();
+  }, [user]);
 
-  const filtered = MOCK_CHATS.filter(c => {
+  const loadConversations = useCallback(async () => {
+    try {
+      const data = await apiGetConversations();
+      setChats(data.map(mapConversation));
+    } catch {
+      // keep empty
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Poll every 10 s for new messages
+  useEffect(() => {
+    if (!user) return;
+    const id = setInterval(loadConversations, 10000);
+    return () => clearInterval(id);
+  }, [user, loadConversations]);
+
+  // Search contacts via /users?search= (basic approach)
+  useEffect(() => {
+    if (!contactSearch.trim()) { setContacts([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `http://localhost:3000/v1/users?search=${encodeURIComponent(contactSearch)}&limit=10`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem('gogo_access_token')}` } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setContacts((data.data ?? []).filter((u: any) => u.id !== user?.id));
+        }
+      } catch {
+        setContacts([]);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [contactSearch, user?.id]);
+
+  const handleStartChat = async (contactId: string) => {
+    if (startingChat) return;
+    setStartingChat(true);
+    try {
+      const { id } = await apiStartConversation([contactId]);
+      setShowNewChat(false);
+      navigate(`/messages/${id}`);
+    } catch {
+      // ignore
+    } finally {
+      setStartingChat(false);
+    }
+  };
+
+  const filtered = chats.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.lastMsg.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === 'all' || (filter === 'personal' ? !c.isGroup : c.isGroup);
     return matchSearch && matchFilter;
   });
+
+  if (!user) {
+    return <LockedPage title="登入後查看訊息" description="與活動夥伴、社團成員直接傳訊息" />;
+  }
 
   return (
     <div className="animate-fade-in pb-24 max-w-2xl mx-auto">
@@ -78,7 +168,7 @@ const MessagesPage: React.FC = () => {
               <Search size={20} />
             </button>
             <button
-              onClick={() => { setShowNewChat(true); setContactSearch(''); }}
+              onClick={() => { setShowNewChat(true); setContactSearch(''); setContacts([]); }}
               className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
               <Edit size={20} />
@@ -109,7 +199,7 @@ const MessagesPage: React.FC = () => {
               {f.label}
               {f.key !== 'all' && (
                 <span className="ml-1 text-[10px] opacity-70">
-                  {MOCK_CHATS.filter(c => f.key === 'personal' ? !c.isGroup : c.isGroup).length}
+                  {chats.filter(c => f.key === 'personal' ? !c.isGroup : c.isGroup).length}
                 </span>
               )}
             </button>
@@ -119,8 +209,21 @@ const MessagesPage: React.FC = () => {
 
       {/* Chat List */}
       <div className="px-2 pt-2 space-y-0.5">
-        {filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">找不到相關對話</div>
+        {loading ? (
+          // Skeleton
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 p-4 animate-pulse">
+              <div className="w-14 h-14 rounded-2xl bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+                <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-2/3" />
+              </div>
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
+            {chats.length === 0 ? '還沒有任何對話，點擊右上角開始新對話' : '找不到相關對話'}
+          </div>
         ) : (
           filtered.map((chat) => (
             <div
@@ -130,7 +233,7 @@ const MessagesPage: React.FC = () => {
             >
               {/* Avatar */}
               <div className="relative flex-shrink-0">
-                <img src={chat.avatar} alt={chat.name} className="w-14 h-14 rounded-2xl object-cover shadow-sm" />
+                <img src={chat.avatar} alt={chat.name} className="w-14 h-14 rounded-2xl object-cover shadow-sm" loading="lazy" />
                 {chat.isGroup && (
                   <div className="absolute -bottom-1 -right-1 bg-primary text-white p-1 rounded-lg border-2 border-white dark:border-gray-900">
                     <Users size={10} />
@@ -193,7 +296,7 @@ const MessagesPage: React.FC = () => {
                   autoFocus
                   value={contactSearch}
                   onChange={e => setContactSearch(e.target.value)}
-                  placeholder="搜尋聯絡人..."
+                  placeholder="搜尋使用者..."
                   className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
                 />
               </div>
@@ -201,30 +304,23 @@ const MessagesPage: React.FC = () => {
 
             {/* Contact List */}
             <div className="flex-1 overflow-y-auto px-3 pb-4">
-              {filteredContacts.length === 0 ? (
-                <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-8">找不到聯絡人</p>
+              {!contactSearch.trim() ? (
+                <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-8">輸入姓名搜尋使用者</p>
+              ) : contacts.length === 0 ? (
+                <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-8">找不到使用者</p>
               ) : (
                 <div className="space-y-1">
-                  {filteredContacts.map(contact => (
+                  {contacts.map(contact => (
                     <button
                       key={contact.id}
-                      onClick={() => {
-                        setShowNewChat(false);
-                        navigate(`/messages/${contact.id}`);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                      onClick={() => handleStartChat(contact.id)}
+                      disabled={startingChat}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left disabled:opacity-60"
                     >
-                      <div className="relative flex-shrink-0">
-                        <img src={contact.avatar} alt={contact.name} className="w-11 h-11 rounded-xl object-cover" />
-                        {contact.isGroup && (
-                          <div className="absolute -bottom-0.5 -right-0.5 bg-primary text-white p-0.5 rounded-md border-2 border-white dark:border-gray-800">
-                            <Users size={8} />
-                          </div>
-                        )}
-                      </div>
+                      <img src={contact.avatar ?? 'https://picsum.photos/id/64/100/100'} alt={contact.name} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" loading="lazy" />
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{contact.name}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">{contact.isGroup ? '群組' : '個人'}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">個人</p>
                       </div>
                     </button>
                   ))}

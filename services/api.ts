@@ -92,6 +92,8 @@ function mapActivity(a: any): Activity {
   return {
     id: a.id,
     clubId: a.clubId,
+    hostId: a.hostId ?? '',
+    approvalMode: (a.approvalMode ?? 'AUTO') as 'AUTO' | 'MANUAL',
     title: a.title,
     date: typeof a.date === 'string' ? a.date.split('T')[0] : a.date,
     time: a.time,
@@ -109,6 +111,8 @@ function mapActivity(a: any): Activity {
     tags: a.tags ?? [],
     lat: a.lat ?? undefined,
     lng: a.lng ?? undefined,
+    myRating: a.myRating ?? null,
+    canRate: a.canRate ?? false,
   };
 }
 
@@ -507,15 +511,89 @@ export async function apiGetExploreTags(): Promise<ExploreTag[] | null> {
   }
 }
 
-export async function apiSaveExploreTags(tags: ExploreTag[]): Promise<void> {
+// ── Activity Suggestions ───────────────────────────────────────────
+export interface ActivitySuggestion {
+  type: 'title' | 'location' | 'tag';
+  value: string;
+}
+
+export async function apiGetActivitySuggestions(q: string): Promise<ActivitySuggestion[]> {
+  if (!q.trim()) return [];
   try {
-    await apiFetch('/users/me/explore-tags', {
-      method: 'PUT',
-      body: JSON.stringify({ tags }),
-    });
+    const res = await apiFetch<{ data: ActivitySuggestion[] }>(
+      `/activities/suggestions?q=${encodeURIComponent(q)}`
+    );
+    return res.data;
   } catch {
-    // Fail silently — localStorage is the primary store
+    return [];
   }
+}
+
+// ── Messages ───────────────────────────────────────────────────────
+
+export interface ConversationSummary {
+  id: string;
+  isGroup: boolean;
+  name: string;
+  avatar: string | null;
+  lastMsg: {
+    senderId: string;
+    senderName: string;
+    content: string;
+    createdAt: string;
+  } | null;
+  updatedAt: string;
+  lastReadAt: string | null;
+  unread: number;
+  participants: { userId: string; name: string; avatar: string | null }[];
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  sender: { id: string; name: string; avatar: string | null };
+  replyTo: {
+    id: string;
+    content: string;
+    sender: { id: string; name: string };
+  } | null;
+}
+
+export async function apiGetConversations(): Promise<ConversationSummary[]> {
+  const res = await apiFetch<{ data: ConversationSummary[] }>('/messages');
+  return res.data;
+}
+
+export async function apiGetMessages(
+  conversationId: string,
+  before?: string
+): Promise<{ data: ChatMessage[]; hasMore: boolean }> {
+  const qs = before ? `?before=${encodeURIComponent(before)}` : '';
+  return apiFetch(`/messages/${conversationId}${qs}`);
+}
+
+export async function apiSendMessage(
+  conversationId: string,
+  content: string,
+  replyToId?: string
+): Promise<ChatMessage> {
+  return apiFetch(`/messages/${conversationId}`, {
+    method: 'POST',
+    body: JSON.stringify({ content, ...(replyToId ? { replyToId } : {}) }),
+  });
+}
+
+export async function apiStartConversation(
+  participantIds: string[],
+  options?: { isGroup?: boolean; name?: string; firstMessage?: string }
+): Promise<{ id: string; isNew: boolean }> {
+  return apiFetch('/messages', {
+    method: 'POST',
+    body: JSON.stringify({ participantIds, ...options }),
+  });
 }
 
 // ── Activity management ────────────────────────────────────────────
@@ -523,9 +601,39 @@ export async function apiDeleteActivity(id: string): Promise<void> {
   await apiFetch(`/activities/${id}`, { method: 'DELETE' });
 }
 
-export async function apiGetActivityParticipants(id: string): Promise<
-  Array<{ id: string; userId: string; name: string; avatar: string; group?: string; registeredAt: string }>
-> {
-  const data = await apiFetch<any>(`/activities/${id}/participants`);
-  return data.data ?? data;
+export interface ParticipantRegistration {
+  id: string;           // registration id
+  userId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED' | 'CANCELLED' | 'ABSENT';
+  group?: string;
+  transport?: string;
+  createdAt: string;
+  user: { id: string; name: string; avatar: string | null };
+}
+
+export async function apiGetActivityParticipants(id: string): Promise<ParticipantRegistration[]> {
+  const data = await apiFetch<{ data: ParticipantRegistration[] }>(`/activities/${id}/participants`);
+  return data.data;
+}
+
+export async function apiReviewRegistration(
+  activityId: string,
+  regId: string,
+  status: 'APPROVED' | 'REJECTED' | 'WAITLISTED'
+): Promise<void> {
+  await apiFetch(`/activities/${activityId}/registrations/${regId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function apiRateActivity(
+  activityId: string,
+  score: number,
+  comment?: string
+): Promise<void> {
+  await apiFetch(`/activities/${activityId}/rate`, {
+    method: 'POST',
+    body: JSON.stringify({ score, comment }),
+  });
 }

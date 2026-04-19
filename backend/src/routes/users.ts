@@ -13,6 +13,28 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
   // 所有 /users 路由都需要登入
   fastify.addHook('preHandler', authenticate)
 
+  // GET /users?search=keyword  (搜尋使用者，用於新對話)
+  fastify.get('/', async (request, reply) => {
+    const q = request.query as Record<string, string>
+    const search = q.search?.trim()
+    const limit = Math.min(20, parseInt(q.limit ?? '10'))
+
+    if (!search) return reply.send({ data: [] })
+
+    const data = await fastify.prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true, name: true, avatar: true },
+      take: limit,
+    })
+
+    reply.send({ data })
+  })
+
   // GET /users/me
   fastify.get('/me', async (request, reply) => {
     const { userId } = request.user

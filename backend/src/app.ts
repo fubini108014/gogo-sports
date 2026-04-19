@@ -16,6 +16,7 @@ import activityRoutes from './routes/activities.js'
 import clubRoutes from './routes/clubs.js'
 import postRoutes from './routes/posts.js'
 import notificationRoutes from './routes/notifications.js'
+import messageRoutes from './routes/messages.js'
 import uploadRoutes from './routes/upload.js'
 
 export function buildApp() {
@@ -58,6 +59,7 @@ export function buildApp() {
   app.register(clubRoutes, { prefix: '/v1/clubs' })
   app.register(postRoutes, { prefix: '/v1/clubs' })
   app.register(notificationRoutes, { prefix: '/v1/notifications' })
+  app.register(messageRoutes, { prefix: '/v1/messages' })
   app.register(uploadRoutes, { prefix: '/v1/upload' })
 
   // Health check

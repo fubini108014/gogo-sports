@@ -9,7 +9,7 @@ import {
   apiGetActivities, apiRegisterActivity, apiCancelRegistration, apiCreateActivity,
   apiGetClubs, apiJoinClub, apiLeaveClub, apiCreateClub,
   apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead,
-  apiUpdateProfile, apiGetExploreTags, apiSaveExploreTags,
+  apiUpdateProfile, apiGetExploreTags,
 } from '../services/api';
 
 const EXPLORE_TAGS_KEY = 'gogo_explore_tags';
@@ -47,6 +47,7 @@ interface AppContextType {
   myActivityIds: string[];
   activitiesLoading: boolean;
   clubsLoading: boolean;
+  notificationsLoading: boolean;
 
   // Auth
   isLoggedIn: boolean;
@@ -151,6 +152,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [myActivityIds, setMyActivityIds] = useState<string[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [clubsLoading, setClubsLoading] = useState(true);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   // Auth State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -209,9 +211,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const saveExploreTags = (tags: ExploreTag[]) => {
     setExploreTags(tags);
     localStorage.setItem(EXPLORE_TAGS_KEY, JSON.stringify(tags));
-    if (isLoggedIn) {
-      apiSaveExploreTags(tags); // fire-and-forget; backend may not support yet
-    }
+    addToast('探索偏好已儲存', 'success');
   };
 
   // Home search modals
@@ -237,6 +237,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // If token exists, load current user
     if (getToken()) {
+      setNotificationsLoading(true);
       apiGetMe()
         .then(u => {
           setUser(u);
@@ -248,7 +249,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .catch(() => {
           // Token expired or invalid
           clearTokens();
-        });
+        })
+        .finally(() => setNotificationsLoading(false));
     }
   }, []);
 
@@ -486,7 +488,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider value={{
       activities, clubs, user, notifications, myActivityIds,
-      activitiesLoading, clubsLoading,
+      activitiesLoading, clubsLoading, notificationsLoading,
       isLoggedIn, isAuthModalOpen, setIsAuthModalOpen,
       handleLogin, handleLogout, handleRegister,
       toasts, addToast,

@@ -76,6 +76,8 @@ export interface Club {
 export interface Activity {
   id: string;
   clubId: string;
+  hostId: string;
+  approvalMode: 'AUTO' | 'MANUAL';
   title: string;
   date: string;
   time: string;
@@ -98,6 +100,8 @@ export interface Activity {
   tags: string[];
   lat?: number;
   lng?: number;
+  myRating?: number | null;
+  canRate?: boolean;
 }
 
 export interface User {

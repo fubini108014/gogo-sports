@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { SPORTS_HIERARCHY } from '../constants';
 import { Activity, DEFAULT_FILTER_STATE } from '../types';
-import { apiGetActivities, LEVEL_REVERSE } from '../services/api';
+import { apiGetActivities, LEVEL_REVERSE, apiGetActivitySuggestions, ActivitySuggestion } from '../services/api';
 import ActivityList from '../components/activity/ActivityList';
 import ActivityMap from '../components/activity/ActivityMap';
 import CalendarPicker from '../components/ui/CalendarPicker';
@@ -22,6 +22,11 @@ const ActivityListPage: React.FC = () => {
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmedSearch, setConfirmedSearch] = useState('');
+
+  // Autocomplete
+  const [suggestions, setSuggestions] = useState<ActivitySuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Apply initial states from navigation or query string on mount
   useEffect(() => {
@@ -331,9 +336,28 @@ const ActivityListPage: React.FC = () => {
     };
   }, [searchTerm]);
 
+  // Autocomplete: fetch suggestions with 200ms debounce
+  useEffect(() => {
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    if (!searchTerm.trim()) { setSuggestions([]); setShowSuggestions(false); return; }
+    suggestTimer.current = setTimeout(async () => {
+      const results = await apiGetActivitySuggestions(searchTerm);
+      setSuggestions(results);
+      setShowSuggestions(results.length > 0);
+    }, 200);
+    return () => { if (suggestTimer.current) clearTimeout(suggestTimer.current); };
+  }, [searchTerm]);
+
   const handleSearchTrigger = () => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     setConfirmedSearch(searchTerm);
+    setShowSuggestions(false);
+  };
+
+  const applySuggestion = (value: string) => {
+    setSearchTerm(value);
+    setConfirmedSearch(value);
+    setShowSuggestions(false);
   };
 
   const handleCheckNextWeek = () => {
@@ -397,6 +421,9 @@ const ActivityListPage: React.FC = () => {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               onKeyDown={handleKeyDown}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              autoComplete="off"
             />
             <button
               onClick={handleSearchTrigger}
@@ -404,6 +431,26 @@ const ActivityListPage: React.FC = () => {
             >
               搜尋
             </button>
+            {/* Autocomplete dropdown */}
+            {showSuggestions && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden z-50">
+                {suggestions.map((s: ActivitySuggestion, i: number) => (
+                  <button
+                    key={i}
+                    onMouseDown={() => applySuggestion(s.value)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                  >
+                    <span className="text-base flex-shrink-0">
+                      {s.type === 'title' ? '🏃' : s.type === 'location' ? '📍' : '🏷️'}
+                    </span>
+                    <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{s.value}</span>
+                    <span className="ml-auto text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">
+                      {s.type === 'title' ? '活動' : s.type === 'location' ? '地點' : '標籤'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}

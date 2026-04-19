@@ -4,6 +4,7 @@ import { Bell, ChevronLeft, CheckCheck, Info, MessageCircle, Calendar, UserPlus 
 
 interface NotificationListProps {
   notifications: Notification[];
+  isLoading?: boolean;
   onBack: () => void;
   onMarkAllRead: () => void;
   onNotificationClick: (id: string) => void;
@@ -11,6 +12,7 @@ interface NotificationListProps {
 
 const NotificationList: React.FC<NotificationListProps> = ({
   notifications,
+  isLoading = false,
   onBack,
   onMarkAllRead,
   onNotificationClick
@@ -61,7 +63,18 @@ const NotificationList: React.FC<NotificationListProps> = ({
 
       {/* List */}
       <div className="bg-white dark:bg-gray-800 min-h-[calc(100vh-70px)]">
-        {notifications.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="p-4 border-b border-gray-50 dark:border-gray-700 flex gap-4 animate-pulse">
+              <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex-shrink-0" />
+              <div className="flex-1 space-y-2 py-1">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+                <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
+                <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-4/5" />
+              </div>
+            </div>
+          ))
+        ) : notifications.length > 0 ? (
           notifications.map(item => (
             <div
               key={item.id}
