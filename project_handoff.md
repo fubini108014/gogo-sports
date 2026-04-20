@@ -1,6 +1,6 @@
 # GoGo Sports — 交接文件
 
-> 最後更新：2026-04-19（修正後端 TypeScript 錯誤；確認活動評分已完成；釐清骨架屏實際缺口）
+> 最後更新：2026-04-20（新增地圖標記聚合）
 
 ---
 
@@ -48,7 +48,7 @@ npm run dev                          # 前端 :5173
 ### 活動模組
 - 列表：關鍵字搜尋（500ms debounce）、城市/程度/價格/快額滿篩選、日曆選日期（週/月切換）
 - **搜尋建議 Autocomplete**：`GET /activities/suggestions?q=` 回傳活動名稱/地點/標籤建議，前端 200ms debounce 觸發，onBlur 收起
-- 地圖：react-leaflet，橘色標記，`fitBounds`，popup 可直接進入詳情
+- 地圖：react-leaflet + `leaflet.markercluster`，橘色標記，重疊自動聚合（橘色數字圓，點擊展開），`fitBounds`，popup 可直接進入詳情
 - 詳情：**骨架屏**（取代 spinner）；大圖、主揪信任卡（稱號/帶團次數）、LIMITED 進度條 / OPEN 頭像列
 - 建立：支援 LIMITED / OPEN 模式，approvalMode AUTO / MANUAL
 - 報名流程：Step1 組別/交通 → Step2 聯絡資訊 + 隱私聲明
@@ -303,7 +303,7 @@ interface ActivitySuggestion {
 | 項目 | 說明 | 優先 |
 |------|------|------|
 | 探索標籤後端路由 | `GET /users/me/explore-tags` 後端路由不存在（`services/api.ts` 有 `// Backend endpoint may not exist yet` 備注）；`saveExploreTags` 目前只存 localStorage，偏好無法跨裝置同步 | 低 |
-| 地圖標記聚合 | 同場地多活動重疊，待接 Leaflet.markercluster | 低 |
+| ~~地圖標記聚合~~ | ✅ 已完成：`leaflet.markercluster` 整合至 `ActivityMap.tsx`，橘色聚合圓 + 展開/spiderfy | 低 |
 | 語言切換 | SettingsModal 無語言選項，i18n 完全未實作 | 低 |
 
 ---

@@ -9,7 +9,7 @@ import {
   apiGetActivities, apiRegisterActivity, apiCancelRegistration, apiCreateActivity,
   apiGetClubs, apiJoinClub, apiLeaveClub, apiCreateClub,
   apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead,
-  apiUpdateProfile, apiGetExploreTags,
+  apiUpdateProfile, apiGetExploreTags, apiSaveExploreTags,
 } from '../services/api';
 
 const EXPLORE_TAGS_KEY = 'gogo_explore_tags';
@@ -211,6 +211,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const saveExploreTags = (tags: ExploreTag[]) => {
     setExploreTags(tags);
     localStorage.setItem(EXPLORE_TAGS_KEY, JSON.stringify(tags));
+    if (isLoggedIn) {
+      apiSaveExploreTags(tags).catch(() => {});
+    }
     addToast('探索偏好已儲存', 'success');
   };
 

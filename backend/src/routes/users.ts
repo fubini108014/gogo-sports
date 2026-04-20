@@ -123,6 +123,38 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     })
   })
 
+  // GET /users/me/explore-tags
+  fastify.get('/me/explore-tags', async (request, reply) => {
+    const { userId } = request.user
+
+    const user = await fastify.prisma.user.findUnique({
+      where: { id: userId },
+      select: { exploreTags: true },
+    })
+
+    if (!user) return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: '使用者不存在' })
+
+    reply.send(user.exploreTags)
+  })
+
+  // PUT /users/me/explore-tags
+  fastify.put('/me/explore-tags', async (request, reply) => {
+    const { userId } = request.user
+    const tags = request.body
+
+    if (!Array.isArray(tags)) {
+      return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: '格式錯誤，需為陣列' })
+    }
+
+    const user = await fastify.prisma.user.update({
+      where: { id: userId },
+      data: { exploreTags: tags },
+      select: { exploreTags: true },
+    })
+
+    reply.send(user.exploreTags)
+  })
+
   // GET /users/me/clubs  (已加入的社團)
   fastify.get('/me/clubs', async (request, reply) => {
     const { userId } = request.user

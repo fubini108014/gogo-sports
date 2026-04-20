@@ -1,6 +1,11 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet.markercluster';
+// @ts-ignore
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+// @ts-ignore
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Activity } from '../../types';
 
 // Fix Leaflet default icon path issue with bundlers
@@ -11,7 +16,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Custom orange marker for primary color
 const orangeIcon = L.divIcon({
   className: '',
   html: `<div style="
@@ -27,17 +31,88 @@ const orangeIcon = L.divIcon({
   popupAnchor: [0, -30],
 });
 
-// Sub-component: auto-fit map bounds to all markers
-const FitBounds: React.FC<{ positions: [number, number][] }> = ({ positions }) => {
+function makeClusterIcon(count: number) {
+  const size = count < 10 ? 36 : count < 100 ? 42 : 48;
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:${size}px;height:${size}px;
+      background:#f97316;
+      border:3px solid white;
+      border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      color:white;font-weight:700;font-size:${size < 42 ? 13 : 14}px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+    ">${count}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+interface ClusterLayerProps {
+  activities: Activity[];
+  onActivityClick?: (activity: Activity) => void;
+}
+
+const ClusterLayer: React.FC<ClusterLayerProps> = ({ activities, onActivityClick }) => {
   const map = useMap();
+  const groupRef = useRef<L.MarkerClusterGroup | null>(null);
+
   useEffect(() => {
-    if (positions.length === 0) return;
+    const group = (L as any).markerClusterGroup({
+      iconCreateFunction: (cluster: L.MarkerCluster) =>
+        makeClusterIcon(cluster.getChildCount()),
+      maxClusterRadius: 60,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      spiderfyOnMaxZoom: true,
+    }) as L.MarkerClusterGroup;
+
+    activities.forEach(activity => {
+      if (activity.lat == null || activity.lng == null) return;
+      const marker = L.marker([activity.lat, activity.lng], { icon: orangeIcon });
+
+      const popup = L.popup({ minWidth: 160 }).setContent(`
+        <div style="min-width:160px">
+          <p style="font-weight:700;font-size:13px;color:#111827;margin:0 0 4px">${activity.title}</p>
+          <p style="font-size:11px;color:#6b7280;margin:0 0 2px">${activity.location}</p>
+          <p style="font-size:11px;color:#6b7280;margin:0 0 8px">${activity.date} · ${activity.time}</p>
+          ${onActivityClick ? `<button
+            data-activity-id="${activity.id}"
+            style="width:100%;font-size:12px;font-weight:700;background:#f97316;color:white;border:none;padding:6px 12px;border-radius:8px;cursor:pointer"
+          >查看活動</button>` : ''}
+        </div>
+      `);
+
+      if (onActivityClick) {
+        popup.on('add', () => {
+          const btn = document.querySelector(`button[data-activity-id="${activity.id}"]`);
+          btn?.addEventListener('click', () => onActivityClick(activity));
+        });
+      }
+
+      marker.bindPopup(popup);
+      group.addLayer(marker);
+    });
+
+    groupRef.current = group;
+    map.addLayer(group);
+
+    const positions = activities
+      .filter(a => a.lat != null && a.lng != null)
+      .map(a => [a.lat!, a.lng!] as [number, number]);
+
     if (positions.length === 1) {
       map.setView(positions[0], 15);
-    } else {
+    } else if (positions.length > 1) {
       map.fitBounds(positions, { padding: [40, 40] });
     }
-  }, [map, positions]);
+
+    return () => {
+      map.removeLayer(group);
+    };
+  }, [map, activities, onActivityClick]);
+
   return null;
 };
 
@@ -62,8 +137,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({
     );
   }
 
-  const positions = mappable.map(a => [a.lat!, a.lng!] as [number, number]);
-  const center = positions[0];
+  const center = [mappable[0].lat!, mappable[0].lng!] as [number, number];
 
   return (
     <div className={`${className} overflow-hidden rounded-2xl z-0`}>
@@ -77,30 +151,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <FitBounds positions={positions} />
-        {mappable.map(activity => (
-          <Marker
-            key={activity.id}
-            position={[activity.lat!, activity.lng!]}
-            icon={orangeIcon}
-          >
-            <Popup>
-              <div className="min-w-[160px]">
-                <p className="font-bold text-sm text-gray-900 mb-1">{activity.title}</p>
-                <p className="text-xs text-gray-500 mb-2">{activity.location}</p>
-                <p className="text-xs text-gray-500 mb-2">{activity.date} · {activity.time}</p>
-                {onActivityClick && (
-                  <button
-                    onClick={() => onActivityClick(activity)}
-                    className="w-full text-xs font-bold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors"
-                  >
-                    查看活動
-                  </button>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        <ClusterLayer activities={mappable} onActivityClick={onActivityClick} />
       </MapContainer>
     </div>
   );

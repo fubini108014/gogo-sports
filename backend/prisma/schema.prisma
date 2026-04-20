@@ -100,6 +100,9 @@ model User {
   globalXP     Int      @default(0)
   sportXP      Json     @default("{}") // Stores { "BADMINTON": 500, "HIKING": 20 }
 
+  // User Preferences
+  exploreTags  Json     @default("[]") // Stores ExploreTag[] for cross-device sync
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

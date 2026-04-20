@@ -507,8 +507,15 @@ export async function apiGetExploreTags(): Promise<ExploreTag[] | null> {
   try {
     return await apiFetch<ExploreTag[]>('/users/me/explore-tags');
   } catch {
-    return null; // Backend endpoint may not exist yet
+    return null;
   }
+}
+
+export async function apiSaveExploreTags(tags: ExploreTag[]): Promise<void> {
+  await apiFetch('/users/me/explore-tags', {
+    method: 'PUT',
+    body: JSON.stringify(tags),
+  });
 }
 
 // ── Activity Suggestions ───────────────────────────────────────────
