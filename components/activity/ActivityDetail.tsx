@@ -5,6 +5,7 @@ import ParticipantAvatars from '../ui/ParticipantAvatars';
 import SectionHeader from '../ui/SectionHeader';
 import ClubLogo from '../club/ClubLogo';
 import ParticipantsPanel from './ParticipantsPanel';
+import BroadcastPanel from './BroadcastPanel';
 import RatingPanel from './RatingPanel';
 import { useAppContext } from '../../context/AppContext';
 
@@ -254,6 +255,11 @@ const ActivityDetail: React.FC<ActivityDetailProps> = ({
             activityId={activity.id}
             approvalMode={activity.approvalMode}
           />
+        )}
+
+        {/* Broadcast Panel — host only */}
+        {isHost && (
+          <BroadcastPanel activityId={activity.id} />
         )}
       </div>
 

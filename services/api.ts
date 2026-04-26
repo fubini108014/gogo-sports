@@ -536,73 +536,6 @@ export async function apiGetActivitySuggestions(q: string): Promise<ActivitySugg
   }
 }
 
-// ── Messages ───────────────────────────────────────────────────────
-
-export interface ConversationSummary {
-  id: string;
-  isGroup: boolean;
-  name: string;
-  avatar: string | null;
-  lastMsg: {
-    senderId: string;
-    senderName: string;
-    content: string;
-    createdAt: string;
-  } | null;
-  updatedAt: string;
-  lastReadAt: string | null;
-  unread: number;
-  participants: { userId: string; name: string; avatar: string | null }[];
-}
-
-export interface ChatMessage {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  content: string;
-  createdAt: string;
-  sender: { id: string; name: string; avatar: string | null };
-  replyTo: {
-    id: string;
-    content: string;
-    sender: { id: string; name: string };
-  } | null;
-}
-
-export async function apiGetConversations(): Promise<ConversationSummary[]> {
-  const res = await apiFetch<{ data: ConversationSummary[] }>('/messages');
-  return res.data;
-}
-
-export async function apiGetMessages(
-  conversationId: string,
-  before?: string
-): Promise<{ data: ChatMessage[]; hasMore: boolean }> {
-  const qs = before ? `?before=${encodeURIComponent(before)}` : '';
-  return apiFetch(`/messages/${conversationId}${qs}`);
-}
-
-export async function apiSendMessage(
-  conversationId: string,
-  content: string,
-  replyToId?: string
-): Promise<ChatMessage> {
-  return apiFetch(`/messages/${conversationId}`, {
-    method: 'POST',
-    body: JSON.stringify({ content, ...(replyToId ? { replyToId } : {}) }),
-  });
-}
-
-export async function apiStartConversation(
-  participantIds: string[],
-  options?: { isGroup?: boolean; name?: string; firstMessage?: string }
-): Promise<{ id: string; isNew: boolean }> {
-  return apiFetch('/messages', {
-    method: 'POST',
-    body: JSON.stringify({ participantIds, ...options }),
-  });
-}
-
 // ── Activity management ────────────────────────────────────────────
 export async function apiDeleteActivity(id: string): Promise<void> {
   await apiFetch(`/activities/${id}`, { method: 'DELETE' });
@@ -642,5 +575,15 @@ export async function apiRateActivity(
   await apiFetch(`/activities/${activityId}/rate`, {
     method: 'POST',
     body: JSON.stringify({ score, comment }),
+  });
+}
+
+export async function apiBroadcastActivity(
+  activityId: string,
+  message: string
+): Promise<{ sent: number }> {
+  return apiFetch(`/activities/${activityId}/broadcast`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
   });
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Bell, Plus, Home, Users, MessageSquare, Compass } from 'lucide-react';
+import { Bell, Plus, Home, Users, Compass } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import NavItem from './ui/NavItem';
 import ModalManager from './modals/ModalManager';
@@ -23,7 +23,6 @@ const Layout: React.FC = () => {
 
   const navItemsRight = [
     { icon: Users, label: '探索社團', path: '/clubs' },
-    { icon: MessageSquare, label: '訊息', path: '/messages' },
   ];
 
   return (

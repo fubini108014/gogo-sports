@@ -117,10 +117,6 @@ model User {
   notifications    Notification[]
   refreshTokens    RefreshToken[]
 
-  // Messages
-  conversations    ConversationParticipant[]
-  sentMessages     Message[]
-
   // Ratings
   activityRatings  ActivityRating[]
 
@@ -315,53 +311,6 @@ model Report {
   target   User @relation("ReportTarget", fields: [targetId], references: [id]) // Assuming target is often a user
 
   @@map("reports")
-}
-
-// ─────────────────────────────────────────────
-// Messaging
-// ─────────────────────────────────────────────
-
-model Conversation {
-  id        String   @id @default(cuid())
-  isGroup   Boolean  @default(false)
-  name      String?  // Only for group conversations
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  participants ConversationParticipant[]
-  messages     Message[]
-
-  @@map("conversations")
-}
-
-model ConversationParticipant {
-  conversationId String
-  userId         String
-  joinedAt       DateTime  @default(now())
-  lastReadAt     DateTime?
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([conversationId, userId])
-  @@map("conversation_participants")
-}
-
-model Message {
-  id             String   @id @default(cuid())
-  conversationId String
-  senderId       String
-  content        String
-  replyToId      String?
-  createdAt      DateTime @default(now())
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  replies      Message[]    @relation("MessageReplies")
-
-  @@map("messages")
 }
 
 // ─────────────────────────────────────────────

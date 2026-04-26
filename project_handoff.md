@@ -1,6 +1,6 @@
 # GoGo Sports — 交接文件
 
-> 最後更新：2026-04-20（新增地圖標記聚合）
+> 最後更新：2026-04-26（移除私訊功能）
 
 ---
 
@@ -31,8 +31,6 @@ npm run dev                          # 前端 :5173
 | `/clubs/:id` | ClubProfilePage | 社群/活動/**相簿（真實上傳）** 頁籤 |
 | `/profile` | UserProfilePage | 個人資料、報名記錄、加入社團，**骨架屏 + LockedPage** |
 | `/notifications` | NotificationsPage | 通知列表，一鍵全讀，**骨架屏 + LockedPage** |
-| `/messages` | MessagesPage | 對話列表，10s polling，**LockedPage** |
-| `/messages/:id` | ConversationPage | 對話詳情（无 Layout），5s polling，**LockedPage** |
 | `/join/:token` | JoinByTokenPage | 社團邀請連結入口（无 Layout wrapper） |
 
 ---
@@ -57,6 +55,7 @@ npm run dev                          # 前端 :5173
 - 自動遞補：有人取消時最早 WAITLISTED 自動升為 APPROVED 並送通知
 - 標記缺席：活動結束後主揪可標記，觸發 XP 懲罰
 - **活動評分**：活動結束後，APPROVED / ABSENT 參與者可評 1–5 星；`RatingPanel` 元件、`POST /activities/:id/rate`、`GET /activities/:id/my-rating`；自動更新 `Club.rating` 平均值
+- **主揪廣播通知**：主揪在活動詳情頁輸入訊息，單向發送 BROADCAST 通知給所有 APPROVED / PENDING 參與者；`BroadcastPanel` 元件、`POST /activities/:id/broadcast`（回傳 `{ sent: number }`）
 
 ### 社團模組
 - 列表：關鍵字/分類/排序，IntersectionObserver 無限滾動
@@ -87,17 +86,9 @@ npm run dev                          # 前端 :5173
 - 點擊跳轉：ACTIVITY → 活動詳情；INVITE/INTERACTION → 社團頁
 - Nav 鈴鐺顯示未讀數紅點
 
-### 訊息（完整前後端）
-- **Prisma 模型**：`Conversation`、`ConversationParticipant`、`Message`（支援 replyTo 自關聯）
-- **Migration**：`20260414000000_add_messaging`
-- **後端路由** `GET /messages`（對話列表 + 未讀數）、`POST /messages`（建立/找回 DM）、`GET /messages/:id`（分頁訊息 + 標記已讀）、`POST /messages/:id`（發送訊息）
-- `GET /users?search=` 供新對話搜尋使用者
-- **前端 MessagesPage**：真實 API、骨架屏、10s polling、新對話搜尋
-- **前端 ConversationPage**：樂觀送出（Optimistic update）、5s polling、回覆預覽、載入更多（cursor-based）
-
 ### 路由原地攔截
 - **`LockedPage` 元件** (`components/ui/LockedPage.tsx`)：橘色鎖頭插圖 + 標題/說明 + 登入按鈕
-- 套用於：`/profile`、`/notifications`、`/messages`、`/messages/:id`
+- 套用於：`/profile`、`/notifications`
 - 未登入時原地顯示 LockedPage，不跳轉、不開 Modal
 
 ### 系統
@@ -125,7 +116,6 @@ npm run dev                          # 前端 :5173
 ### 使用者 `/v1/users`
 | Method | 路徑 | 說明 |
 |--------|------|------|
-| GET | `/?search=` | 搜尋使用者（新對話用，回傳 id/name/avatar） |
 | GET | `/me` | 🔐 取得當前登入者資料 |
 | PATCH | `/me` | 🔐 更新個人資料（name, phone, bio） |
 
@@ -142,6 +132,7 @@ npm run dev                          # 前端 :5173
 | DELETE | `/:id/register` | 🔐 取消報名 |
 | PATCH | `/:id/registrations/:regId` | 🔐 審核報名（status: APPROVED/REJECTED/WAITLISTED） |
 | PATCH | `/:id/registrations/:regId/absent` | 🔐 標記缺席（觸發 XP 懲罰） |
+| POST | `/:id/broadcast` | 🔐 廣播通知（主揪），發送給所有 APPROVED/PENDING 參與者 |
 
 ### 社團 `/v1/clubs`
 | Method | 路徑 | 說明 |
@@ -173,14 +164,6 @@ npm run dev                          # 前端 :5173
 |--------|------|------|
 | GET | `/` | 🔐 通知列表 |
 | PATCH | `/read-all` | 🔐 全部標為已讀 |
-
-### 訊息 `/v1/messages`
-| Method | 路徑 | 說明 |
-|--------|------|------|
-| GET | `/` | 🔐 對話列表（含未讀數、最後一則訊息） |
-| POST | `/` | 🔐 建立/找回 DM（participantIds[], isGroup?, name?, firstMessage?） |
-| GET | `/:id` | 🔐 訊息列表（cursor-based: ?before=ISO&limit=30），自動標記已讀 |
-| POST | `/:id` | 🔐 發送訊息（content, replyToId?） |
 
 ### 上傳 `/v1/upload`
 | Method | 路徑 | 說明 |
@@ -248,13 +231,12 @@ npm run dev                  # :5173
 - `RegistrationStatus`：`PENDING | APPROVED | REJECTED | WAITLISTED | CANCELLED | ABSENT`
 - `ApprovalMode`：`AUTO | MANUAL`
 - `ClubInviteLink`：token（唯一）、expiresAt、requireApproval
-- `Conversation` / `ConversationParticipant` / `Message`：私訊系統
-  - Message.replyToId 自關聯（`onDelete: NoAction`）
 - 所有 Migration：
   - `20260306173924_init`
   - `20260307000000_add_comment_parent`
   - `20260408000000_add_club_invite_links`
-  - `20260414000000_add_messaging`
+  - `20260414000000_add_messaging`（已由 `20260426000000_remove_messaging` DROP）
+  - `20260426000000_remove_messaging`
 
 ---
 
@@ -292,10 +274,6 @@ interface ActivitySuggestion {
 4. 重新拉取貼文列表刷新相簿 grid
 5. Lightbox 點擊放大（`lightboxUrl` state 控制）
 
-### Optimistic Update（`ConversationPage.tsx`）
-
-送出訊息時先在本地插入 temp message（`id: 'temp-...'`），API 成功後以真實資料替換。若 API 失敗，移除 temp message 並顯示 Toast。
-
 ---
 
 ## 待辦清單（Backlog）
@@ -313,13 +291,12 @@ interface ActivitySuggestion {
 | 檔案 | 用途 |
 |------|------|
 | `context/AppContext.tsx` | 所有全域狀態 + handlers（登入/登出/報名/社團/通知）；`notificationsLoading` 狀態 |
-| `services/api.ts` | 所有 API 呼叫，mapper 函式，包含 messages / suggestions 新函式 |
+| `services/api.ts` | 所有 API 呼叫，mapper 函式，包含 suggestions 函式 |
 | `types.ts` | 所有 TS 介面（User 有 bio?, phone?）|
 | `components/ui/LockedPage.tsx` | 未登入攔截插圖元件 |
 | `components/modals/ModalManager.tsx` | 所有 Modal 的統一掛載點（符合 CLAUDE.md 規範） |
-| `backend/src/routes/messages.ts` | 訊息後端路由（Conversation / Message） |
 | `backend/src/routes/activities.ts` | 包含 `GET /suggestions` autocomplete endpoint |
-| `backend/src/routes/` | clubs.ts / activities.ts / users.ts / auth.ts / posts.ts / messages.ts |
+| `backend/src/routes/` | clubs.ts / activities.ts / users.ts / auth.ts / posts.ts / notifications.ts / upload.ts |
 | `backend/prisma/schema.prisma` | 完整 DB schema |
 
 ---
@@ -334,9 +311,6 @@ interface ActivitySuggestion {
 
 ### 新增路由 → App.tsx
 `pages/` 下新增 Page 元件後，記得在 `App.tsx` 的 `<Routes>` 補 `<Route>`。
-
-### 背景 Polling 記得 cleanup
-MessagesPage（10s）和 ConversationPage（5s）使用 `setInterval` + `useEffect` cleanup，新增 polling 頁面需照相同 pattern 避免 memory leak。
 
 ### Prisma Migration 流程
 ```bash

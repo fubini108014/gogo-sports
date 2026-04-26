@@ -558,6 +558,44 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
 
     reply.status(201).send({ ok: true })
   })
+
+  // ── POST /activities/:id/broadcast ──────────────────────────────
+  // Host-only: send a one-way notification to all APPROVED + PENDING participants
+  fastify.post('/:id/broadcast', { preHandler: authenticate }, async (request, reply) => {
+    const { userId } = request.user
+    const { id: activityId } = request.params as { id: string }
+    const { message } = z.object({
+      message: z.string().min(1).max(200),
+    }).parse(request.body)
+
+    const activity = await fastify.prisma.activity.findUnique({ where: { id: activityId } })
+    if (!activity) return reply.status(404).send({ message: '活動不存在' })
+    if (activity.hostId !== userId) return reply.status(403).send({ message: '只有主揪可以發送廣播通知' })
+
+    const registrations = await fastify.prisma.registration.findMany({
+      where: {
+        activityId,
+        status: { in: ['APPROVED', 'PENDING'] },
+        userId: { not: userId },
+      },
+      select: { userId: true },
+    })
+
+    if (registrations.length > 0) {
+      await fastify.prisma.notification.createMany({
+        data: registrations.map(reg => ({
+          userId: reg.userId,
+          type: 'BROADCAST' as const,
+          title: `【${activity.title}】主揪通知`,
+          content: message,
+          linkId: activityId,
+          linkType: 'ACTIVITY',
+        })),
+      })
+    }
+
+    reply.send({ sent: registrations.length })
+  })
 }
 
 export default activityRoutes
