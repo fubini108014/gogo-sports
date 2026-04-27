@@ -29,7 +29,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
     const q = request.query as Record<string, string>
     const page = Math.max(1, parseInt(q.page ?? '1'))
-    const limit = Math.min(50, parseInt(q.limit ?? '12'))
+    const limit = Math.min(200, parseInt(q.limit ?? '12'))
     const skip = (page - 1) * limit
 
     let userId: string | undefined
@@ -60,9 +60,14 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     if (q.sport) where.primarySport = q.sport as PrimarySport
     if (q.clubId) where.clubId = q.clubId
     
-    // Status filter
-    if (q.status) where.status = q.status as any
-    else where.status = 'OPEN'
+    // Status filter — pass status=ALL to bypass and return every status
+    if (q.status === 'ALL') {
+      // no filter
+    } else if (q.status) {
+      where.status = q.status as any
+    } else {
+      where.status = 'OPEN'
+    }
 
     const [activities, total] = await Promise.all([
       fastify.prisma.activity.findMany({

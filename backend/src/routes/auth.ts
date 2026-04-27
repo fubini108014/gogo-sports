@@ -16,6 +16,10 @@ const loginSchema = z.object({
   password: z.string(),
 })
 
+const lineSchema = z.object({
+  idToken: z.string(),
+})
+
 const REFRESH_TOKEN_EXPIRES_DAYS = 30
 
 /**
@@ -23,6 +27,13 @@ const REFRESH_TOKEN_EXPIRES_DAYS = 30
  */
 function checkProfileComplete(user: any): boolean {
   return !!(user.name && user.phone)
+}
+
+async function buildAuthResponse(fastify: any, user: any) {
+  const { passwordHash: _, ...safeUser } = user
+  const accessToken = fastify.jwt.sign({ userId: safeUser.id, email: safeUser.email })
+  const refreshToken = await createRefreshToken(fastify, safeUser.id)
+  return { user: { ...safeUser, isProfileComplete: checkProfileComplete(safeUser) }, accessToken, refreshToken }
 }
 
 const authRoutes: FastifyPluginAsync = async (fastify) => {
@@ -38,17 +49,9 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     const passwordHash = await bcrypt.hash(body.password, 12)
     const user = await fastify.prisma.user.create({
       data: { name: body.name, email: body.email, passwordHash, phone: body.phone },
-      select: { id: true, name: true, email: true, avatar: true, phone: true, createdAt: true },
     })
 
-    const accessToken = fastify.jwt.sign({ userId: user.id, email: user.email })
-    const refreshToken = await createRefreshToken(fastify, user.id)
-
-    reply.status(201).send({ 
-      user: { ...user, isProfileComplete: checkProfileComplete(user) }, 
-      accessToken, 
-      refreshToken 
-    })
+    reply.status(201).send(await buildAuthResponse(fastify, user))
   })
 
   // POST /auth/login
@@ -56,7 +59,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     const body = loginSchema.parse(request.body)
 
     const user = await fastify.prisma.user.findUnique({ where: { email: body.email } })
-    if (!user) {
+    if (!user || !user.passwordHash) {
       return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Email 或密碼錯誤' })
     }
 
@@ -65,15 +68,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Email 或密碼錯誤' })
     }
 
-    const accessToken = fastify.jwt.sign({ userId: user.id, email: user.email })
-    const refreshToken = await createRefreshToken(fastify, user.id)
-
-    const { passwordHash: _, ...safeUser } = user
-    reply.send({ 
-      user: { ...safeUser, isProfileComplete: checkProfileComplete(safeUser) }, 
-      accessToken, 
-      refreshToken 
-    })
+    reply.send(await buildAuthResponse(fastify, user))
   })
 
   // POST /auth/refresh
@@ -105,6 +100,40 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     const { passwordHash: _, ...safeUser } = user
     reply.send({ ...safeUser, isProfileComplete: checkProfileComplete(safeUser) })
+  })
+
+  // POST /auth/line
+  fastify.post('/line', async (request, reply) => {
+    const { idToken } = lineSchema.parse(request.body)
+
+    const channelId = process.env.LINE_CHANNEL_ID
+    if (!channelId) {
+      return reply.status(503).send({ statusCode: 503, error: 'Service Unavailable', message: 'LINE 登入尚未設定' })
+    }
+
+    const verifyRes = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ id_token: idToken, client_id: channelId }),
+    })
+
+    if (!verifyRes.ok) {
+      return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'LINE token 驗證失敗' })
+    }
+
+    const profile = await verifyRes.json() as { sub: string; name?: string; picture?: string }
+    const { sub: lineUserId, name: displayName = 'LINE 用戶', picture } = profile
+
+    let user = await fastify.prisma.user.findUnique({ where: { lineUserId } })
+    if (!user) {
+      user = await fastify.prisma.user.create({
+        data: { lineUserId, name: displayName, email: `line_${lineUserId}@line.local`, avatar: picture },
+      })
+    } else if (!user.avatar && picture) {
+      user = await fastify.prisma.user.update({ where: { id: user.id }, data: { avatar: picture } })
+    }
+
+    reply.send(await buildAuthResponse(fastify, user))
   })
 
   // POST /auth/logout

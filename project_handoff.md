@@ -1,6 +1,6 @@
 # GoGo Sports — 交接文件
 
-> 最後更新：2026-04-26（移除私訊功能）
+> 最後更新：2026-04-26（新增 LINE LIFF 整合規劃）
 
 ---
 
@@ -276,10 +276,61 @@ interface ActivitySuggestion {
 
 ---
 
+## LINE LIFF 整合規劃
+
+> 目標：將活動報名頁包成 LINE LIFF App，讓私人球場主揪可在 LINE 群組置頂連結，群員直接用 LINE 帳號一鍵報名。
+
+### 產品流程
+
+```
+主揪在 LINE 群組貼活動連結（置頂公告）
+       ↓
+群員點開 → 在 LINE 內開啟報名頁（LIFF App）
+       ↓
+LIFF 自動取得 LINE 身分 → 後端換發 JWT → 直接進現有報名流程
+```
+
+### 帳號策略
+
+首次 LINE 登入 **自動建立新帳號**（用 LINE displayName 填入），不需綁定既有 GoGo Sports 帳號。
+（目標用戶是私人球場的全新用戶，不會有現有帳號。）
+
+### 實作清單
+
+| # | 項目 | 說明 |
+|---|------|------|
+| 1 | DB：User 加 `lineUserId` 欄位 | `String? @unique`，Prisma migration |
+| 2 | 後端：`POST /v1/auth/line` | 收 LINE `idToken` → 驗證 → 查 or 建 User → 回傳 accessToken + refreshToken |
+| 3 | 前端：LIFF SDK 初始化 | `@line/liff` 安裝，app 啟動時 `liff.init()`，偵測 LINE 環境自動換 token |
+| 4 | 前端：登入頁加「LINE 登入」按鈕 | 非 LINE 環境走 `liff.login()`，LINE 環境自動完成 |
+
+### 環境變數（待新增）
+
+```env
+# LINE Login Channel
+LINE_CHANNEL_ID=""
+LINE_CHANNEL_SECRET=""
+LIFF_ID=""
+```
+
+### 技術選型
+
+| 元件 | 技術 |
+|---|---|
+| LINE 內嵌 web app | LINE LIFF (`@line/liff`) |
+| 外部瀏覽器 LINE 登入 | LINE Login OAuth 2.0 |
+| 報名後通知 | LINE Notify 或 Messaging API（未來擴充） |
+
+---
+
 ## 待辦清單（Backlog）
 
 | 項目 | 說明 | 優先 |
 |------|------|------|
+| **LINE Login — DB migration** | `User` 表加 `lineUserId String? @unique`；執行 `prisma migrate dev --name add_line_user_id` | 高 |
+| **LINE Login — 後端 endpoint** | `POST /v1/auth/line`：驗證 LINE idToken（呼叫 LINE API）→ upsert User → 回傳 JWT pair | 高 |
+| **LINE Login — LIFF 初始化** | 安裝 `@line/liff`；`index.tsx` 或 `AppContext` 啟動時 `liff.init({ liffId })`；偵測 `liff.isInClient()` | 高 |
+| **LINE Login — 登入 UI** | `AuthModal` 加「用 LINE 登入」按鈕；LINE 環境自動觸發；外部瀏覽器導向 LINE OAuth | 高 |
 | 探索標籤後端路由 | `GET /users/me/explore-tags` 後端路由不存在（`services/api.ts` 有 `// Backend endpoint may not exist yet` 備注）；`saveExploreTags` 目前只存 localStorage，偏好無法跨裝置同步 | 低 |
 | ~~地圖標記聚合~~ | ✅ 已完成：`leaflet.markercluster` 整合至 `ActivityMap.tsx`，橘色聚合圓 + 展開/spiderfy | 低 |
 | 語言切換 | SettingsModal 無語言選項，i18n 完全未實作 | 低 |

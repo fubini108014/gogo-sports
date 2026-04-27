@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import { Club } from '../types';
-import { apiGetClub } from '../services/api';
+import { Club, Activity } from '../types';
+import { apiGetClub, apiGetActivities } from '../services/api';
 
 export const useClubProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    clubs, activities, user,
+    clubs, user,
     handleActivityClick, handleJoinClub, handleLeaveClub, addToast,
   } = useAppContext();
 
   const [fetchedClub, setFetchedClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(false);
+  const [clubActivities, setClubActivities] = useState<Activity[]>([]);
 
   const clubFromContext = clubs.find(c => c.id === id);
   const club = clubFromContext ?? fetchedClub;
@@ -28,11 +29,18 @@ export const useClubProfile = () => {
     }
   }, [id, clubFromContext]);
 
+  useEffect(() => {
+    if (!id) return;
+    apiGetActivities({ clubId: id, limit: '200', status: 'ALL' })
+      .then(({ data }) => setClubActivities(data))
+      .catch(() => {});
+  }, [id]);
+
   const handleBack = () => navigate(-1);
 
   return {
     club,
-    activities,
+    activities: clubActivities,
     user,
     loading,
     handleActivityClick,

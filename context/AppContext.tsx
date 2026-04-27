@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { SPORTS_HIERARCHY } from '../constants';
 import { Activity, Club, FilterState, DEFAULT_FILTER_STATE, Notification, NotificationType, User, ExploreTag, DEFAULT_EXPLORE_TAGS } from '../types';
 import { ToastItem } from '../components/ui/Toast';
+import liff from '@line/liff';
 import {
   getToken, clearTokens,
-  apiLogin, apiRegister, apiLogout, apiGetMe,
+  apiLogin, apiRegister, apiLogout, apiGetMe, apiLineLogin,
   apiGetActivities, apiRegisterActivity, apiCancelRegistration, apiCreateActivity,
   apiGetClubs, apiJoinClub, apiLeaveClub, apiCreateClub,
   apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead,
@@ -56,6 +57,8 @@ interface AppContextType {
   handleLogin: (email: string, password: string) => Promise<void>;
   handleLogout: () => Promise<void>;
   handleRegister: (name: string, email: string, password: string, phone?: string) => Promise<void>;
+  handleLineLogin: () => Promise<void>;
+  liffReady: boolean;
 
   // Toast
   toasts: ToastItem[];
@@ -117,6 +120,8 @@ interface AppContextType {
   setIsDateSelectModalOpen: (v: boolean) => void;
   selectedCalendarDate: Date;
   setSelectedCalendarDate: (d: Date) => void;
+  calendarActiveDates: string[];
+  setCalendarActiveDates: (dates: string[]) => void;
 
   // Handlers
   handleActivityClick: (activity: Activity) => void;
@@ -157,6 +162,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Auth State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [liffReady, setLiffReady] = useState(false);
 
   // Toast State
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -207,6 +213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Date select modal
   const [isDateSelectModalOpen, setIsDateSelectModalOpen] = useState(false);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
+  const [calendarActiveDates, setCalendarActiveDates] = useState<string[]>([]);
 
   const saveExploreTags = (tags: ExploreTag[]) => {
     setExploreTags(tags);
@@ -257,20 +264,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // ── Auth ─────────────────────────────────────────────────────────
-  const handleLogin = async (email: string, password: string) => {
-    const u = await apiLogin(email, password);
+  // ── Auth helpers ──────────────────────────────────────────────────
+  const applyLogin = (u: User) => {
     setUser(u);
     setMyActivityIds(u.registeredActivityIds);
     setIsLoggedIn(true);
-    addToast(`歡迎回來，${u.name}！`, 'success');
-    // Load notifications after login
-    apiGetNotifications()
-      .then(({ data }) => setNotifications(data))
-      .catch(() => {});
-    // Re-load clubs to get isJoined state
+    apiGetNotifications().then(({ data }) => setNotifications(data)).catch(() => {});
     apiGetClubs({ limit: '50' }).then(({ data }) => setClubs(data)).catch(() => {});
-    // Sync explore tags from server (override localStorage with server state)
+  };
+
+  const handleLogin = async (email: string, password: string) => {
+    const u = await apiLogin(email, password);
+    applyLogin(u);
+    addToast(`歡迎回來，${u.name}！`, 'success');
     apiGetExploreTags().then(tags => {
       if (tags && tags.length > 0) {
         setExploreTags(tags);
@@ -294,8 +300,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications([]);
     setIsLoggedIn(false);
     addToast('已登出', 'info');
-    // Reload clubs without auth (no isJoined info needed)
     apiGetClubs({ limit: '50' }).then(({ data }) => setClubs(data)).catch(() => {});
+  };
+
+  // ── LIFF initialization ───────────────────────────────────────────
+  useEffect(() => {
+    const liffId = import.meta.env.VITE_LIFF_ID;
+    if (!liffId) return;
+
+    liff.init({ liffId })
+      .then(() => {
+        setLiffReady(true);
+        if (liff.isLoggedIn() && !getToken()) {
+          const idToken = liff.getIDToken();
+          if (idToken) {
+            apiLineLogin(idToken)
+              .then(u => { applyLogin(u); addToast(`歡迎，${u.name}！`, 'success'); })
+              .catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleLineLogin = async () => {
+    if (!liffReady) {
+      addToast('LINE 登入尚未準備好，請稍後再試', 'error');
+      return;
+    }
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return;
+    }
+    const idToken = liff.getIDToken();
+    if (!idToken) {
+      addToast('無法取得 LINE 驗證資訊', 'error');
+      return;
+    }
+    const u = await apiLineLogin(idToken);
+    applyLogin(u);
+    setIsAuthModalOpen(false);
+    addToast(`歡迎，${u.name}！`, 'success');
   };
 
   // ── Auth guard helper ─────────────────────────────────────────────
@@ -493,7 +538,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activities, clubs, user, notifications, myActivityIds,
       activitiesLoading, clubsLoading, notificationsLoading,
       isLoggedIn, isAuthModalOpen, setIsAuthModalOpen,
-      handleLogin, handleLogout, handleRegister,
+      handleLogin, handleLogout, handleRegister, handleLineLogin, liffReady,
       toasts, addToast,
       darkMode, setDarkMode,
       selectedActivity, setSelectedActivity,
@@ -512,6 +557,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toggleHomeLocation, toggleHomeMainCategory, toggleHomeSubCategory,
       exploreTags, saveExploreTags, isExploreManagerOpen, setIsExploreManagerOpen,
       isDateSelectModalOpen, setIsDateSelectModalOpen, selectedCalendarDate, setSelectedCalendarDate,
+      calendarActiveDates, setCalendarActiveDates,
       handleActivityClick, handleClubClick,
       handleRegistrationConfirm, handleCancelRegistration,
       handleJoinClub, handleLeaveClub,

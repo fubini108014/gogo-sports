@@ -28,10 +28,11 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
   defaultView = 'week',
   showViewSwitcher = true,
 }) => {
-  const { 
-    setIsDateSelectModalOpen, 
-    selectedCalendarDate, 
-    setSelectedCalendarDate 
+  const {
+    setIsDateSelectModalOpen,
+    selectedCalendarDate,
+    setSelectedCalendarDate,
+    setCalendarActiveDates,
   } = useAppContext();
 
   const [calendarView, setCalendarView] = useState<'week' | 'month' | 'year'>(defaultView);
@@ -69,6 +70,7 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
 
   const handleOpenModal = () => {
     setSelectedCalendarDate(calendarDate);
+    setCalendarActiveDates(activeDates);
     setIsDateSelectModalOpen(true);
   };
 

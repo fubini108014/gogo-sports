@@ -91,7 +91,8 @@ model User {
   id           String   @id @default(cuid())
   name         String
   email        String   @unique
-  passwordHash String
+  passwordHash String?
+  lineUserId   String?  @unique
   phone        String?
   avatar       String?
   bio          String?

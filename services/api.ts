@@ -183,24 +183,20 @@ export function mapUser(u: any): User {
 }
 
 // ── Auth ──────────────────────────────────────────────────────────
-export async function apiLogin(email: string, password: string): Promise<User> {
-  const data = await apiFetch<any>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
+async function apiFetchAuth(path: string, body: object): Promise<User> {
+  const data = await apiFetch<any>(path, { method: 'POST', body: JSON.stringify(body) });
   setTokens(data.accessToken, data.refreshToken);
   return mapUser(data.user);
+}
+
+export async function apiLogin(email: string, password: string): Promise<User> {
+  return apiFetchAuth('/auth/login', { email, password });
 }
 
 export async function apiRegister(
   name: string, email: string, password: string, phone?: string
 ): Promise<User> {
-  const data = await apiFetch<any>('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ name, email, password, ...(phone ? { phone } : {}) }),
-  });
-  setTokens(data.accessToken, data.refreshToken);
-  return mapUser(data.user);
+  return apiFetchAuth('/auth/register', { name, email, password, ...(phone ? { phone } : {}) });
 }
 
 export async function apiLogout(): Promise<void> {
@@ -210,6 +206,10 @@ export async function apiLogout(): Promise<void> {
     body: JSON.stringify({ refreshToken }),
   }).catch(() => {});
   clearTokens();
+}
+
+export async function apiLineLogin(idToken: string): Promise<User> {
+  return apiFetchAuth('/auth/line', { idToken });
 }
 
 // ── User ──────────────────────────────────────────────────────────

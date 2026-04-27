@@ -41,6 +41,7 @@ const ModalManager: React.FC = () => {
     addToast,
     exploreTags, saveExploreTags, isExploreManagerOpen, setIsExploreManagerOpen,
     isDateSelectModalOpen, setIsDateSelectModalOpen, selectedCalendarDate, setSelectedCalendarDate,
+    calendarActiveDates,
   } = useAppContext();
 
   const managedClubs = clubs.filter(c => user.managedClubIds.includes(c.id));
@@ -162,7 +163,7 @@ const ModalManager: React.FC = () => {
         onClose={() => setIsDateSelectModalOpen(false)}
         currentDate={selectedCalendarDate}
         onSelectDate={setSelectedCalendarDate}
-        activeDates={activities.map(a => a.date)}
+        activeDates={calendarActiveDates}
       />
 
       <Toast toasts={toasts} />

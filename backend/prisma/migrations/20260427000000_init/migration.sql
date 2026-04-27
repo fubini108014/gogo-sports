@@ -1,11 +1,17 @@
 -- CreateEnum
+CREATE TYPE "PrimarySport" AS ENUM ('BADMINTON', 'VOLLEYBALL', 'BASKETBALL', 'TABLE_TENNIS', 'TENNIS', 'PICKLEBALL', 'HIKING', 'RUNNING', 'OTHER');
+
+-- CreateEnum
 CREATE TYPE "RegistrationMode" AS ENUM ('LIMITED', 'OPEN');
+
+-- CreateEnum
+CREATE TYPE "ApprovalMode" AS ENUM ('AUTO', 'MANUAL');
 
 -- CreateEnum
 CREATE TYPE "ActivityStatus" AS ENUM ('OPEN', 'FULL', 'CANCELLED', 'ENDED');
 
 -- CreateEnum
-CREATE TYPE "RegistrationStatus" AS ENUM ('CONFIRMED', 'WAITLISTED', 'CANCELLED');
+CREATE TYPE "RegistrationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'WAITLISTED', 'CANCELLED', 'ABSENT');
 
 -- CreateEnum
 CREATE TYPE "Level" AS ENUM ('BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PRO');
@@ -14,17 +20,27 @@ CREATE TYPE "Level" AS ENUM ('BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'PRO');
 CREATE TYPE "PostType" AS ENUM ('ANNOUNCEMENT', 'SHARE', 'PHOTO');
 
 -- CreateEnum
-CREATE TYPE "NotificationType" AS ENUM ('SYSTEM', 'ACTIVITY', 'INTERACTION', 'INVITE');
+CREATE TYPE "NotificationType" AS ENUM ('SYSTEM', 'ACTIVITY', 'INTERACTION', 'INVITE', 'BROADCAST');
+
+-- CreateEnum
+CREATE TYPE "ReportReason" AS ENUM ('SPAM', 'VIOLENCE', 'INAPPROPRIATE_CONTENT', 'HARASSMENT', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "ReportStatus" AS ENUM ('PENDING', 'RESOLVED');
 
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "passwordHash" TEXT NOT NULL,
+    "passwordHash" TEXT,
+    "lineUserId" TEXT,
     "phone" TEXT,
     "avatar" TEXT,
     "bio" TEXT,
+    "globalXP" INTEGER NOT NULL DEFAULT 0,
+    "sportXP" JSONB NOT NULL DEFAULT '{}',
+    "exploreTags" JSONB NOT NULL DEFAULT '[]',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -63,6 +79,7 @@ CREATE TABLE "club_members" (
     "userId" TEXT NOT NULL,
     "clubId" TEXT NOT NULL,
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "activityCount" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "club_members_pkey" PRIMARY KEY ("userId","clubId")
 );
@@ -76,20 +93,35 @@ CREATE TABLE "club_admins" (
 );
 
 -- CreateTable
-CREATE TABLE "activities" (
+CREATE TABLE "club_invite_links" (
     "id" TEXT NOT NULL,
     "clubId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "requireApproval" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "club_invite_links_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "activities" (
+    "id" TEXT NOT NULL,
+    "hostId" TEXT NOT NULL,
+    "clubId" TEXT,
     "title" TEXT NOT NULL,
+    "primarySport" "PrimarySport" NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
     "time" TEXT NOT NULL,
     "location" TEXT NOT NULL,
     "city" TEXT NOT NULL,
-    "price" INTEGER NOT NULL,
+    "price" INTEGER NOT NULL DEFAULT 0,
     "mode" "RegistrationMode" NOT NULL,
+    "approvalMode" "ApprovalMode" NOT NULL DEFAULT 'AUTO',
     "status" "ActivityStatus" NOT NULL DEFAULT 'OPEN',
     "maxParticipants" INTEGER,
-    "currentInternalCount" INTEGER NOT NULL DEFAULT 0,
     "currentAppCount" INTEGER NOT NULL DEFAULT 0,
+    "minCancelHours" INTEGER NOT NULL DEFAULT 24,
     "groups" TEXT[],
     "level" "Level" NOT NULL,
     "image" TEXT,
@@ -108,11 +140,52 @@ CREATE TABLE "registrations" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "activityId" TEXT NOT NULL,
+    "status" "RegistrationStatus" NOT NULL DEFAULT 'PENDING',
+    "contactMethod" TEXT NOT NULL,
+    "realName" TEXT NOT NULL,
     "group" TEXT,
-    "status" "RegistrationStatus" NOT NULL DEFAULT 'CONFIRMED',
+    "transportation" TEXT,
+    "carCapacity" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "registrations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "blacklist" (
+    "id" TEXT NOT NULL,
+    "hostId" TEXT NOT NULL,
+    "blockedUserId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "blacklist_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "activity_ratings" (
+    "id" TEXT NOT NULL,
+    "activityId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "score" INTEGER NOT NULL,
+    "comment" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "activity_ratings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "reports" (
+    "id" TEXT NOT NULL,
+    "reporterId" TEXT NOT NULL,
+    "targetId" TEXT NOT NULL,
+    "targetType" TEXT NOT NULL,
+    "reason" "ReportReason" NOT NULL,
+    "content" TEXT,
+    "status" "ReportStatus" NOT NULL DEFAULT 'PENDING',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "reports_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -145,6 +218,7 @@ CREATE TABLE "comments" (
     "id" TEXT NOT NULL,
     "postId" TEXT NOT NULL,
     "authorId" TEXT NOT NULL,
+    "parentId" TEXT,
     "content" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -159,6 +233,9 @@ CREATE TABLE "notifications" (
     "title" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "isRead" BOOLEAN NOT NULL DEFAULT false,
+    "image" TEXT,
+    "lat" DOUBLE PRECISION,
+    "lng" DOUBLE PRECISION,
     "linkId" TEXT,
     "linkType" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -170,10 +247,22 @@ CREATE TABLE "notifications" (
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_lineUserId_key" ON "users"("lineUserId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "refresh_tokens_token_key" ON "refresh_tokens"("token");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "club_invite_links_token_key" ON "club_invite_links"("token");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "registrations_userId_activityId_key" ON "registrations"("userId", "activityId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "blacklist_hostId_blockedUserId_key" ON "blacklist"("hostId", "blockedUserId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "activity_ratings_activityId_userId_key" ON "activity_ratings"("activityId", "userId");
 
 -- AddForeignKey
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -191,6 +280,12 @@ ALTER TABLE "club_admins" ADD CONSTRAINT "club_admins_userId_fkey" FOREIGN KEY (
 ALTER TABLE "club_admins" ADD CONSTRAINT "club_admins_clubId_fkey" FOREIGN KEY ("clubId") REFERENCES "clubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "club_invite_links" ADD CONSTRAINT "club_invite_links_clubId_fkey" FOREIGN KEY ("clubId") REFERENCES "clubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "activities" ADD CONSTRAINT "activities_hostId_fkey" FOREIGN KEY ("hostId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "activities" ADD CONSTRAINT "activities_clubId_fkey" FOREIGN KEY ("clubId") REFERENCES "clubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -198,6 +293,24 @@ ALTER TABLE "registrations" ADD CONSTRAINT "registrations_userId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "registrations" ADD CONSTRAINT "registrations_activityId_fkey" FOREIGN KEY ("activityId") REFERENCES "activities"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "blacklist" ADD CONSTRAINT "blacklist_hostId_fkey" FOREIGN KEY ("hostId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "blacklist" ADD CONSTRAINT "blacklist_blockedUserId_fkey" FOREIGN KEY ("blockedUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "activity_ratings" ADD CONSTRAINT "activity_ratings_activityId_fkey" FOREIGN KEY ("activityId") REFERENCES "activities"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "activity_ratings" ADD CONSTRAINT "activity_ratings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "reports" ADD CONSTRAINT "reports_reporterId_fkey" FOREIGN KEY ("reporterId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "reports" ADD CONSTRAINT "reports_targetId_fkey" FOREIGN KEY ("targetId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "posts" ADD CONSTRAINT "posts_clubId_fkey" FOREIGN KEY ("clubId") REFERENCES "clubs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -218,4 +331,8 @@ ALTER TABLE "comments" ADD CONSTRAINT "comments_postId_fkey" FOREIGN KEY ("postI
 ALTER TABLE "comments" ADD CONSTRAINT "comments_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "comments" ADD CONSTRAINT "comments_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "comments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
